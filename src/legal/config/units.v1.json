@@ -1,0 +1,23 @@
+{
+  "format_version": 1,
+  "version": "units.v1",
+  "units": [
+    {"code":"CNY","name":"人民币元","dimension":"currency:CNY","scale":"1","reference_unit":"CNY","aliases":["元","人民币元"]},
+    {"code":"USD","name":"美元","dimension":"currency:USD","scale":"1","reference_unit":"USD","aliases":["美元"]},
+    {"code":"EUR","name":"欧元","dimension":"currency:EUR","scale":"1","reference_unit":"EUR","aliases":["欧元"]},
+    {"code":"GBP","name":"英镑","dimension":"currency:GBP","scale":"1","reference_unit":"GBP","aliases":["英镑"]},
+    {"code":"JPY","name":"日元","dimension":"currency:JPY","scale":"1","reference_unit":"JPY","aliases":["日元"]},
+    {"code":"HKD","name":"港元","dimension":"currency:HKD","scale":"1","reference_unit":"HKD","aliases":["港元","港币"]},
+    {"code":"day","name":"日（未区分计日规则）","dimension":"time:day","scale":"1","reference_unit":"day","aliases":["日","天"]},
+    {"code":"calendar_day","name":"自然日","dimension":"time:calendar_day","scale":"1","reference_unit":"calendar_day","aliases":["自然日"]},
+    {"code":"business_day","name":"工作日","dimension":"time:business_day","scale":"1","reference_unit":"business_day","aliases":["工作日"]},
+    {"code":"month","name":"月","dimension":"time:month","scale":"1","reference_unit":"month","aliases":["月"]},
+    {"code":"year","name":"年","dimension":"time:year","scale":"1","reference_unit":"year","aliases":["年"]},
+    {"code":"hour","name":"小时","dimension":"time:hour","scale":"1","reference_unit":"hour","aliases":["小时"]},
+    {"code":"minute","name":"分钟","dimension":"time:minute","scale":"1","reference_unit":"minute","aliases":["分钟"]},
+    {"code":"second","name":"秒","dimension":"time:second","scale":"1","reference_unit":"second","aliases":["秒"]},
+    {"code":"ratio","name":"比例","dimension":"ratio","scale":"1","reference_unit":"ratio","aliases":[]},
+    {"code":"percent","name":"百分比","dimension":"ratio","scale":"0.01","reference_unit":"ratio","aliases":["%","％"]},
+    {"code":"count","name":"次数","dimension":"count","scale":"1","reference_unit":"count","aliases":["次"]}
+  ]
+}
