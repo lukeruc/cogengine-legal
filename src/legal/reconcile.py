@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import re
 
-from .formats import fail, new_id, timestamp
+from .formats import Invalid, fail, new_id, pointer_get, timestamp
 from .query import default_text_versions, _identity, supported_clause_ids
 from .storage import CaseStore, _json
-from .values import check_contract
+from .values import check_contract, matches_schema, validate_units, validate_value
 
 CHECKS = ["character_coverage", "anchors", "value_candidates", "value_roundtrip", "classification_coverage", "appellations"]
 DATE = r"[0-9]{4}(?:年[0-9]{1,2}(?:月[0-9]{1,2}日?)?|-[0-9]{2}(?:-[0-9]{2})?)"
@@ -20,6 +20,87 @@ CANDIDATES = re.compile(f"{DATE}|{PERCENT}|{NUMBER}")
 def _diagnostic(code, message, record_id=None, path=None, text_version_id=None, clause_id=None, **extra):
     return {"code": code, "message": message, "record_id": record_id,
             "path": path, "text_version_id": text_version_id, "clause_id": clause_id, **extra}
+
+
+def _stored_structure(store, rows, history, errors):
+    """Recheck persisted values, references and version chains on read."""
+    vocabulary = store.vocabulary()
+    slots = {slot["id"]: slot for slot in vocabulary["slots"]}
+    unit_ids = {unit["id"] for unit in vocabulary["units"]}
+    assignments = {(item["unit_id"], item["slot_id"]) for item in vocabulary["assignments"]}
+    assigned_slots = {slot_id for _, slot_id in assignments}
+    try:
+        units = validate_units(store.unit_config())
+    except (Invalid, KeyError, TypeError, ValueError) as exc:
+        errors.append((3, _diagnostic("STORED_VALUE_INVALID", str(exc), path="/case_info/unit_config_json")))
+        return
+
+    sequence_by_submission = {row["submission_id"]: row["sequence"]
+                              for row in store.db.execute("SELECT submission_id,sequence FROM submissions")}
+    def resolver(ref, path, sequence):
+        if not isinstance(ref, dict):
+            fail("REFERENCE_NOT_FOUND", path, "stored value reference is malformed")
+        if "record_id" in ref:
+            target = store.record(ref["record_id"])
+        elif "object_id" in ref:
+            target = store.current(ref["object_id"], sequence if history else None)
+        else:
+            fail("REFERENCE_NOT_FOUND", path, "stored value reference has no target")
+        if target is None:
+            fail("REFERENCE_NOT_FOUND", path, "stored value target is missing")
+        data = json.loads(target["data_json"])
+        if "value_path" in ref:
+            pointer_get(data, ref["value_path"])
+        kind = target["kind"] + (":" + data["node_kind"] if target["kind"] == "node" else "")
+        return {"kind": kind, "data": data, "object_id": target["object_id"],
+                "record_id": target["record_id"]}
+
+    for row in rows:
+        if row["status"] != "active":
+            continue
+        try:
+            data = json.loads(row["data_json"])
+            sequence = sequence_by_submission[row["submission_id"]]
+            resolve = lambda ref, path: resolver(ref, path, sequence)
+            if row["kind"] == "detail":
+                slot = slots.get(data["slot_id"])
+                owner = store.current(data["owner"]["object_id"], sequence if history else None)
+                if slot is None or owner is None or owner["kind"] != "relation":
+                    fail("REFERENCE_NOT_FOUND", "/data/slot_id", "stored detail slot or owner is missing")
+                owner_data = json.loads(owner["data_json"])
+                if data["slot_id"] in assigned_slots and (owner_data["unit_id"], data["slot_id"]) not in assignments:
+                    fail("SLOT_NOT_APPLICABLE", "/data/slot_id", "stored slot is not assigned to owner unit")
+                matches_schema(data["value"], slot["value_schema"], units, resolve, "/data/value")
+            elif row["kind"] == "node" and data["node_kind"] == "defined_value":
+                validate_value(data["value"], units, resolve, "/data/value")
+            elif row["kind"] == "node" and data["node_kind"] == "event" and "object" in data:
+                validate_value(data["object"], units, resolve, "/data/object")
+            elif row["kind"] == "relation" and data["unit_id"] not in unit_ids:
+                fail("REFERENCE_NOT_FOUND", "/data/unit_id", "stored relation unit is missing")
+        except (Invalid, KeyError, TypeError, ValueError, IndexError) as exc:
+            path = exc.path if isinstance(exc, Invalid) else "/data"
+            errors.append((3, _diagnostic("STORED_VALUE_INVALID", str(exc), row["record_id"], path)))
+
+    previous_by_object = {}
+    for row in store.db.execute("SELECT object_id,record_id,revision,previous_record_id FROM record_versions ORDER BY object_id,revision"):
+        previous = previous_by_object.get(row["object_id"])
+        if (row["revision"] == 1 and row["previous_record_id"] is not None or
+                row["revision"] > 1 and (previous is None or
+                    row["revision"] != previous[0] + 1 or row["previous_record_id"] != previous[1])):
+            errors.append((4, _diagnostic("VERSION_CHAIN_INVALID", "stored revision chain differs",
+                                           row["record_id"], "/previous_record_id")))
+        previous_by_object[row["object_id"]] = (row["revision"], row["record_id"])
+
+    selected = {row["record_id"] for row in rows}
+    objects = {row[0] for row in store.db.execute("SELECT object_id FROM objects")}
+    records = {row[0] for row in store.db.execute("SELECT record_id FROM record_versions")}
+    for link in store.db.execute("SELECT record_id,path,target_object_id,target_record_id FROM record_links"):
+        if link["record_id"] not in selected:
+            continue
+        if (link["target_object_id"] is not None and link["target_object_id"] not in objects or
+                link["target_record_id"] is not None and link["target_record_id"] not in records):
+            errors.append((4, _diagnostic("REFERENCE_NOT_FOUND", "stored link target is missing",
+                                           link["record_id"], link["path"])))
 
 
 def reconcile(db_path, text_version_id=None, history=False):
@@ -78,6 +159,7 @@ def reconcile(db_path, text_version_id=None, history=False):
         if not clause_rows:
             errors.append((4, _diagnostic("EMPTY_SCOPE", "no clauses in selected scope")))
         rows = store.db.execute("SELECT r.*,o.kind FROM record_versions r JOIN objects o USING(object_id)").fetchall() if history else store.db.execute("SELECT r.*,o.kind FROM active_records r JOIN objects o USING(object_id)").fetchall()
+        _stored_structure(store, rows, history, errors)
         for row in rows:
             data = json.loads(row["data_json"])
             if row["kind"] == "anchor":

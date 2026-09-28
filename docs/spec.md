@@ -582,7 +582,7 @@ record_links.path 以 `/data/...` 或 `/evidence/<序号>/source/...` 表示在�
 
 所有成功提交相关行只追加；工具不 UPDATE/DELETE 这些行。词表、case_info 开工后冻结。初始化失败不留下可用的半库；目标预先存在时不覆盖。写事务采用 BEGIN IMMEDIATE，SQL 插入顺序为 submissions、objects、全部版本、类型/来源/引用/完成/概要，全部成功才提交；UUID 与完整回执在插入前已算好，无需回头更新 receipt_json。case_info 与词表在同一个 init 事务写入。
 
-init 内部 input_json 为 `{operation:"init",case_id,vocabulary_hash,unit_config_hash}`，内容哈希按 §2.2 规范计算；phase=init、submitted_by=`case_cli`、sequence=1。其他命令成功时 sequence 为当前 max+1；register/split 的内部 submitted_by 分别为 `case_cli`、`splitter:contract_v3.adapted.1`。vocabulary_files_json 为按路径排序的 `[{path,content_hash}]`，content_hash 是各源文件实际字节 SHA-256，与合并词表逻辑哈希分开；tool_version 为实现发布版本，不在本次规格虚构已发布版本。
+init 内部 input_json 为 `{operation:"init",case_id,vocabulary_hash,unit_config_hash}`，内容哈希按 §2.2 规范计算；phase=init、submitted_by=`case_cli`、sequence=1。其他命令成功时 sequence 为当前 max+1；register/split 的内部 submitted_by 分别为 `case_cli`、`splitter:contract_v3.article.2`（旧提交仍保留旧版本标识）。vocabulary_files_json 为按路径排序的 `[{path,content_hash}]`，content_hash 是各源文件实际字节 SHA-256，与合并词表逻辑哈希分开；tool_version 为实现发布版本，不在本次规格虚构已发布版本。
 
 前驱同对象、revision 连续、不可变类别、当前条款 sequence 不重复、指向正确类别以及 JSON 内容相等属于事务内强制条件。历史 clauses 可以同地址，不能以全表 UNIQUE(text_version,sequence) 拒绝标签修订。
 
@@ -676,7 +676,7 @@ record item 结构：`{object_id,record_id,revision,previous_record_id,submissio
 
 默认选择每素材最新 text_version 的当前 active 条款，可 --text-version 限定一个已登记版本。范围内任一 unclassified 则拒绝 UNCLASSIFIED_CLAUSE。不执行提取，也不写案件库，不改变对账状态。
 
-每个有条款的 unit 导出 `unit-<uuid>.json`；no_content 和 unmatched 分别导出同名 JSON。每份格式为 `{format_version:1,case_id,vocabulary_hash,unit_id,classification,clauses:[{object_id,record_id,material_id,text_version_id,sequence,original_number,text,tags}]}`；普通 unit 的 classification=ordinary，其余 unit_id=null。text 是逐字内容，不在其内插标题；地址独立字段。所有条款按 `(素材登记序,文本版本号,sequence,object_id)` 排序。
+每个有条款的 unit 导出 `unit-<uuid>.json`；no_content 和 unmatched 分别导出同名 JSON。每份格式为 `{format_version:1,case_id,vocabulary_hash,unit_id,classification,clauses:[{object_id,record_id,material_id,text_version_id,sequence,original_number,text,tags,context_clauses}]}`；`context_clauses` 为在同一文本版本中先于本条的上级标题区间列表，每项有 `{object_id,sequence,text}`，只供阅读。普通 unit 的 classification=ordinary，其余 unit_id=null。text 是该 article 或例外区间的逐字内容，不在其内插标题；地址独立字段；上下文副本不计入字符覆盖或第二份提取职责。所有条款按 `(素材登记序,文本版本号,sequence,object_id)` 排序。
 
 输出目录必须不存在或为空，已有文件拒绝，不覆盖。成功返回 `{ok:true,files:[{path,unit_id,classification,clause_ids}],clause_count}`；clause_count 按唯一条款计数。多标签副本允许出现在多个文件中；无标签特殊分类也有文件，不能在责任分配中丢失。目录写出失败删除本命令已新建的不完整文件；未返回成功的目录不得被 skill 当作完整交接。
 
@@ -857,7 +857,7 @@ d48b432865dcc66fb3693dc07b6b12b364b8d558c9d01dde317ff085c1cb16b3
 
 该版本只导出章节/条款行号、标题及异常；读取时使用普通 read_text，会归一化换行；条款结束行延伸到后续条款前；无编号部分不会独立成为完整条款清单。因此不能把它的 total_chars、title 或 line_end 直接作为本项目原文和字符覆盖的依据。
 
-本项目算法版本固定为 `contract_v3.adapted.1`。识别器依据以上源码版本，适配为读取已登记 text 字符串；不调用外部 CLI，不在运行时依赖另一个工作区路径。未来复用的实现文件仍放在 legal/src 内。本次只记录规格及核对结果，不复制源代码。
+原算法版本 `contract_v3.adapted.1` 的空行切片规则已被验收报告 §4.0 否定。整改后的版本为 `contract_v3.article.2`；识别器仍以已核对的 contract_v3 扫描方法为基础，组织层级和 article 范围参照其 render_structure、split_topics 行为，但不把渲染后的重排文本入库。旧版回执和条款对象保留，已有文本版本不自动重切。
 
 ### 12.2 标题候选识别
 
@@ -869,8 +869,10 @@ d48b432865dcc66fb3693dc07b6b12b364b8d558c9d01dde317ff085c1cb16b3
 4. zh/bilingual 按中文章→编/部分→节→条→十进制识别；en/bilingual 再按 ARTICLE→Section→Clause→数字段落识别。
 5. 中文字符集合和英文续接词排除集合以固定源码为准。中文子项正则虽已定义，主扫描没有用它建立单独条款，不能因看到常量就声称子项已独立识别。
 6. 十进制每段1—3位、至多4层，拒绝继续连接数字或点；数字后紧接年月日号点时分秒不作标题。单层裸数字没有行内标题不作标题；两层以上可独占一行。
-7. 英文 ARTICLE 作为章、Section/Clause 作为条款；关键词后没有标题或以源码中的续接词开头，视为正文引用。英文语言分支不会凭空取得中文分支才有的全部十进制识别能力；未识别段按 §12.3 留存并提示。
-8. `_resolve_decimal_chapters`、`_apply_party_restart` 的结果只决定候选编号属性；不得据其删除正文。标题借读后续至多8行仅用于候选标题提示，不把拼接后的 title 当原文。
+7. 原扫描器的 `chapters/articles` 是候选结构，不直接等于本项目最终的打标层级。英文 `ARTICLE`、单层十进制编号在不同合同中可能是章或首层 article；依据转换文本中的标题层级、编号序列、相邻标题与正文共同判定。有章时选章下一级 article；无章时选第一层合同条目。文档题名、目录、附件目录不是据标题级别自动判定为章。无法可靠判定时保留文字并产生结构异常，不将孤立条件或续段伪装成 article。
+8. 交叉引用仅因软换行来到行首，不得成为标题边界。需要可靠标题标记或独立编号条款形态，并检查前后文是否为同一句的续接。`_resolve_decimal_chapters`、`_apply_party_restart` 只供候选判断，不删除正文；标题借读不改变原文。
+
+Markdown 标题层级的确定规则：先排除目录、附表目录及显式 `.unnumbered` 的导航标题；顶层若显式写“第…条”、`ARTICLE`、`Clause` 或 `Section`，按无章合同处理，顶层即 article。顶层显式写章标题时，其下一层为 article。没有这些字样时，若下一层标题分别出现在至少两个顶层标题之下，按有章合同处理；否则顶层为 article。下一层明确写条标题时也按有章合同处理。article 以下更深标题仅属于其正文，不独立切分。对无法由上述证据可靠认定的输入，应保留完整原文并在结构异常中显明不确定性；转换程序应尽可能输出真实标题层级及可见编号。
 
 旧源码的精确识别函数作为此版本的参照；源码变化须核对哈希、升级算法版本及用例。已经保存的条款不自动重切。识别的局限通过无编号段提示保留，不为本次规格悄悄修改词法范围。
 
@@ -879,12 +881,12 @@ d48b432865dcc66fb3693dc07b6b12b364b8d558c9d01dde317ff085c1cb16b3
 以下为 principles 既定四项适配的确定落位：直接写条款、地址消歧、无编号段显式记录、异常入缺口表。
 
 1. **物理行**：以 LF 分行，保留 LF 及前面的 CR；无末尾换行也保存最后一行。仅 CR 的源文本按一行保存，不改写。每个行首位置由原字符串字符数累计，Unicode 按码点计，不按 UTF-8 字节或可见字形计。
-2. **识别起点**：取最终 chapters/articles 中所有 line_start，以及每个附件 token 行的行首；不采用旧 line_end。相同行起点去重，候选编号按原匹配 token 保存；章节标题也要有可寻址片段。
-3. **无编号段**：把空白行分隔的每个非空白段落起点加入边界；段内的已识别标题起点仍可再切。没有候选编号的片段保留 original_number=null，并产生 structure_anomaly，说明“未识别编号，需按原文阅读”；只作疑似结构提示，不断言它必定是独立法律条款。无空行的连续正文保留在同一片段，不能按句号做语义切分。
-4. **表格**：trim后以 `|` 起始的连续 Markdown 表格行作为连续区域，在区域开始、下一非表格行开始加边界；不识别表格行内的条款编号。其他纯文本表格按普通无编号段保留，不猜列坐标；行列关系丢失属于转换异常。
-5. **空白归属**：加入0和全文长度；排序全部起点，取相邻半开区间，去零长度。段落之间空白归前片段；文件开头空白有独立前片段。全空白非空文本形成一个片段；空文本形成零片段。纯空白片段也给地址，不能丢弃；它不产生“疑似无编号条款”异常，由打标判断无规定内容。
-6. **编号与地址**：按区间顺序赋 sequence=1..N；重复 original_number 不改字、不覆盖，稳定地址靠 text_version+sequence。同一物理行包含多个附件名称仍是一个片段，不把原文不存在的换行写入文本。
-7. **异常**：保留源 `_detect_anomalies` 的 skip/duplicate/format_mix 提示和其原文位置；再加上述未识别编号提示。每条异常写一条 gap_kind=structure_anomaly，clause 固定到所在新条款版本；description 含原始异常类型、说明和涉及行号。异常证据锚指该片段原文，自动生成 reported_by=`splitter:contract_v3.adapted.1`。重复位置按出现次数消歧。异常不阻断切分；字符不守恒则整次 split 失败。
+2. **分析单位**：一个可靠识别的 article 标题开始一条可独立打标的基础区间，延续至下一个同层 article、上级章节或独立附件区域之前；其内部更深层标题、全部段落、条件、例外、表格及表后说明都在该区间。章标题及章引言作为独立、可寻址的上下文区间，不与相邻 article 在基础覆盖中重叠。前言、签署页等非 article 区域同样有基础区间；其中独立规定允许例外打标提取。编号可空，`sequence` 只表示区间顺序。
+3. **边界来源**：只采用可靠的结构标题或独立条款编号起点及真正独立的前言、附件等区域起点。空行、普通段落起点、表格行及其起止、内部子标题均不成为 article 边界。纯正文的行首 `Clause`、`Schedule` 等交叉引用若与前句续接，不产生边界。无法判定归属的连续范围保留并记 structure_anomaly，不逐空行制造疑似条款。
+4. **表格与上下文**：表格随所属 article 完整保留，表头、费率行、共同限制及表后说明须可共同阅读。章标题和共用引言可作为分组阅读上下文重复提供，但其基础区间仍只占全文字符一次。转换若已丢失行列关系，应由预处理异常说明，切分器不猜列坐标。
+5. **字符覆盖**：加入0和全文长度，按已接受的区域起点构造连续半开区间；所有区间不重叠且拼接逐字符等于登记全文。区间之间的空白归前一区间，开头空白归开头区域；空文本零区间，全空白非空文本保留一个区间。不得借用 render_structure 的清理、重排和软换行合并结果替换原文。
+6. **编号与地址**：按区间顺序赋 sequence=1..N；原文编号按已登记文本的真实标题保存，可空、可重复，不以编号当稳定 ID。真实 DOCX 自动编号应由显式配置的转换器写入新 `text.txt` 并与原件核对；只看目录不能凭空补号。既有文本及锚不就地更改。
+7. **异常**：编号跳跃、重复、混用以及不确定归属仍记 structure_anomaly；无编号不自动生成异常，也不自动宣称无内容。每条异常锚到相关原文，reported_by 使用 `splitter:contract_v3.article.2`。字符不守恒则整次 split 失败。
 8. **事务**：条款、新锚、结构缺口及成功回执同一事务；classification=unclassified、tags=[]，不写 extraction_completions。结构 gap 的证据可引用本批锚，锚再固定本批条款。split 的原始管理输入和回执保留算法版本。
 
 ### 12.4 固定样例
@@ -894,13 +896,13 @@ d48b432865dcc66fb3693dc07b6b12b364b8d558c9d01dde317ff085c1cb16b3
 | 输入 | 预期片段与编号 | 异常 |
 |---|---|---|
 | `第一条 付款。\n第三条 交付。\n第三条 验收。\n` | 三行各一片段，编号第一条/第三条/第三条 | skip、duplicate；地址各不同 |
-| `1. 合同价款\n1.1 支付价款。\n1.3 结算。\n` | 三行各一片段，编号1./1.1/1.3 | skip |
-| `ARTICLE I PAYMENT\nSection 1 Amount\nBuyer pays.\nClause 2 Delivery\n` | 第一行；第二三行合一；第四行 | 无；第二片段保留正文行 |
-| `合同名称\n甲方：甲\n\n双方另有约定。\n` | `合同名称\n甲方：甲\n\n`；`双方另有约定。\n`，编号均null | 两个未识别编号提示 |
+| `1. 合同价款\n1.1 支付价款。\n1.3 结算。\n`（无章标题） | 全文为第一层 article 1. 的一个区间，1.1/1.3 为内部规定 | 不能仅因小节编号或换行另设独立责任 |
+| `CHAPTER I PAYMENT\nSection 1 Amount\nBuyer pays.\nSection 2 Delivery\n` | 章标题独立区间；Section 1 连同正文；Section 2 独立 article | 章标题供两个 article 作上下文 |
+| `合同名称\n甲方：甲\n\n双方另有约定。\n` | 全文一个非 article 区间，编号 null | 不按空行切分；内容是否独立打标由正文判断 |
 | `> **1.1 付款。**\r\n> 1.2\r\n收到后付款。\r\n` | 第一行；第二三行合一，编号1.1/1.2 | 原样保留全部标记及CRLF |
 | `第一条 正文。\n附件一 清单 附件二 图纸\n第二条 后续。\n` | 三行各一片段，附件原文不拆写 | 后续第二条必须被识别，不被附件区吞掉 |
-| `提前\n60\n天通知。\n` | 全文一片段，编号null | 一个未识别编号提示；60不是标题 |
-| `第一条 价格。\n\n\|品名\|金额\|\n\|A\|100\|\n第二条 交付。` | 第一条及空行；两行表格；第二条 | 表格独立无编号提示；末尾不补换行 |
+| `提前\n60\n天通知。\n` | 全文一个非 article 区间，编号 null | 60 不是标题；结构归属不确定时记一次异常 |
+| `第一条 价格。\n\n\|品名\|金额\|\n\|A\|100\|\n第二条 交付。` | 第一 article 连同空行和整表；第二 article | 表格不独立切分；末尾不补换行 |
 | 空串 | [] | split成功但入库不能据此宣称完成，六查EMPTY_SCOPE |
 | ` \r\n\n` | 原字符串一片段 | 无数字编号提示，不丢空白 |
 

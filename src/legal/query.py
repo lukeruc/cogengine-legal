@@ -82,6 +82,25 @@ def _provenance(store, record_id, seen=None):
         return []
     seen.add(record_id)
     result = []
+    record = store.record(record_id)
+    if record and record["kind"] == "anchor":
+        anchor_data = json.loads(record["data_json"])
+        clause_record = anchor_data["clause"]["record_id"]
+        clause = store.record(clause_record)
+        positions = store.db.execute("SELECT start_offset,end_offset FROM anchors WHERE record_id=?", (record_id,)).fetchone()
+        if clause and positions:
+            clause_data = json.loads(clause["data_json"])
+            text_id = clause_data["text_version"]["object_id"]
+            text = store.current(text_id)
+            material_id = json.loads(text["data_json"])["material"]["object_id"] if text else None
+            return [{"path": "", "level": 1, "premises": [], "anchors": [{
+                "anchor_record_id": record_id, "clause_id": clause["object_id"],
+                "clause_record_id": clause_record, "text_version_id": text_id,
+                "material_id": material_id, "sequence": clause_data["sequence"],
+                "quote": anchor_data["quote"],
+                "start_offset": clause_data["start_offset"] + positions["start_offset"],
+                "end_offset": clause_data["start_offset"] + positions["end_offset"]}]}]
+        return []
     for evidence in store.db.execute("SELECT path,level,source_json FROM assertion_sources WHERE record_id=? ORDER BY path", (record_id,)):
         source = json.loads(evidence["source_json"])
         anchors, premises = [], []
@@ -200,8 +219,9 @@ def _gaps(store, row):
         item = json.loads(gap["data_json"])
         clause = store.record(item["clause"]["record_id"])
         related = item.get("related_object", {}).get("record_id")
-        if clause and (clause["object_id"] in targets or related == row["record_id"]):
-            target_row = store.record(related) if related else clause
+        related_row = store.record(related) if related else None
+        if clause and (clause["object_id"] in targets or related_row and related_row["object_id"] == row["object_id"]):
+            target_row = related_row or clause
             current = store.current(target_row["object_id"]) if target_row else None
             result.append({"object_id": gap["object_id"], "record_id": gap["record_id"],
                            "gap_kind": item["gap_kind"], "description": item["description"],
@@ -279,8 +299,11 @@ def _filter_item(store, item, options):
             party_ids.update(e["canonical_id"] for e in item["identity"]["endpoints"] if e["canonical_id"])
             found = bool(party_ids & allowed)
         elif kind == "detail":
-            owner = store.current(data["owner"]["object_id"])
-            found = bool(owner and {p["subject"]["object_id"] for p in json.loads(owner["data_json"]).get("parties", [])} & allowed)
+            owner = store.current(data["owner"]["object_id"], item["expansion_sequence"])
+            party_ids = {p["subject"]["object_id"] for p in json.loads(owner["data_json"]).get("parties", [])} if owner else set()
+            party_ids.update(identity["canonical_id"] for subject_id in list(party_ids)
+                             if (identity := _identity(store, subject_id, item["expansion_sequence"]))["canonical_id"])
+            found = bool(party_ids & allowed)
         else:
             found = False
         if not found:
@@ -452,10 +475,16 @@ def query(db_path, options):
                         owner_id = json.loads(row["data_json"])["owner"]["object_id"]
                         if owner_id not in owner_parties:
                             owner = store.current(owner_id)
-                            owner_parties[owner_id] = (
+                            party_ids = (
                                 {party["subject"]["object_id"] for party in json.loads(owner["data_json"]).get("parties", [])}
                                 if owner else set()
                             )
+                            for subject_id in list(party_ids):
+                                if subject_id not in party_identities:
+                                    party_identities[subject_id] = _identity(store, subject_id)["canonical_id"]
+                                if party_identities[subject_id]:
+                                    party_ids.add(party_identities[subject_id])
+                            owner_parties[owner_id] = party_ids
                         if not owner_parties[owner_id] & requested_parties:
                             continue
                     else:

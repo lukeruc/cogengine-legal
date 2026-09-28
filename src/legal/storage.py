@@ -7,7 +7,7 @@ import sqlite3
 from pathlib import Path
 
 from . import __version__
-from .formats import (canonical, digest, fail, file_bytes, file_text, hash_json,
+from .formats import (Invalid, canonical, digest, fail, file_bytes, file_text, hash_json,
                       new_id, read_json, timestamp, uuid_value, version, fields,
                       integer, nonempty)
 from .values import validate_units
@@ -35,9 +35,15 @@ class CaseStore:
                 self.info = self.db.execute("SELECT * FROM case_info").fetchone()
                 if self.info is None:
                     fail("DATABASE_ERROR", str(path), "case_info missing")
+                for field in ("schema_version", "value_format_version", "code_version", "vocabulary_format_version"):
+                    if self.info[field] != 1:
+                        fail("UNSUPPORTED_VERSION", f"/case_info/{field}", "unsupported case format version")
             else:
                 self.info = None
-        except sqlite3.Error as exc:
+        except (sqlite3.Error, Invalid) as exc:
+            self.db.close()
+            if isinstance(exc, Invalid):
+                raise
             fail("DATABASE_ERROR", str(path), str(exc))
 
     def close(self):

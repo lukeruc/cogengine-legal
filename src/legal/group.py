@@ -1,6 +1,7 @@
 """Lossless tagged clause exports for reading assignments."""
 
 import json
+import re
 from pathlib import Path
 
 from .formats import exclusive_write, fail
@@ -35,7 +36,30 @@ def group(db_path, output_dir, text_version_id=None):
                         "material_id": material_id, "text_version_id": text_id, "sequence": data["sequence"],
                         "original_number": data["original_number"], "text": data["text"], "tags": data["tags"]}
                 ordered.append((material[0], data["sequence"], item))
+        headings = {}
         for _, _, item in sorted(ordered, key=lambda x: (x[0], x[1], x[2]["object_id"])):
+            text_id = item["text_version_id"]
+            prior = headings.setdefault(text_id, {})
+            first_line = item["text"].split("\n", 1)[0]
+            heading = re.match(r"^ {0,3}(#{1,6})[ \t]+", first_line)
+            if heading:
+                level = len(heading.group(1))
+                item["context_clauses"] = [prior[key] for key in sorted(prior) if key < level]
+                for key in list(prior):
+                    if key >= level:
+                        del prior[key]
+                if ".unnumbered" not in first_line:
+                    prior[level] = {"object_id": item["object_id"],
+                                    "sequence": item["sequence"], "text": item["text"]}
+            else:
+                chapter = re.match(r"^\s*(?:第[一二三四五六七八九十百千\d]+章|CHAPTER\s+(?:[IVXLCDM]+|\d+)\b)", first_line, re.I)
+                if chapter and item["original_number"] is None:
+                    prior.clear()
+                    prior[0] = {"object_id": item["object_id"],
+                                "sequence": item["sequence"], "text": item["text"]}
+                    item["context_clauses"] = []
+                else:
+                    item["context_clauses"] = [prior[0]] if 0 in prior and item["original_number"] is not None else []
             if item["tags"]:
                 for unit in item["tags"]:
                     buckets.setdefault(("ordinary", unit), []).append(item)

@@ -22,6 +22,6 @@ python -m legal.case_cli write --db /path/case.sqlite --kind detail --local-id d
 
 修订另给 `--object-id`、`--previous-record-id`，撤销另给 `--status withdrawn --withdrawal-reason`；不能与 `--input` 混用。复杂互引使用完整文件。查询支持 `--view records|materials|clauses|vocabulary|overview|events|progress|gaps|report`、`--object`、`--record`、`--history`、`--include-withdrawn`、可重复 `--kind/--party/--unit/--slot/--source-level/--clause`、`--limit/--offset`、`--format json|markdown`、`--output`。相同过滤器取并，不同过滤器取交。`--view materials --object ID --format original --output FILE` 排他导出原件。查询返回 `result_status=found|no_record` 与质量状态；`no_record` 不等于原文无约定。
 
-`group` 将每个 unit、无内容、无匹配的条款导出逐字 JSON，输出目录须为空；多标签条款可出现于多个上下文文件，完整提取责任仍只分配一次。`reconcile` 保存六查报告：字符覆盖、锚、值候选、值往返、归类覆盖、称谓闭合。报告 `passed=false` 时退出 4，修正后再次调用；写入后旧报告状态为 `stale`。
+`group` 将每个 unit、无内容、无匹配的完整 article 或例外区间导出逐字 JSON，输出目录须为空；每条附 `context_clauses` 供读取上级标题，副本不产生第二份提取责任。多标签条款可出现在多个组，完整提取责任仍只分配一次。`reconcile` 保存六查报告：字符覆盖、锚、值候选、值往返、归类覆盖、称谓闭合。报告 `passed=false` 时退出 4，修正后再次调用；写入后旧报告状态为 `stale`。
 
 完整记录格式、出处和值语法见 [data-formats.md](data-formats.md)。

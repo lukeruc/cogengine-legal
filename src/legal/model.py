@@ -266,10 +266,11 @@ class ModelWriter:
                 index = clause_data["text"].find(quote, index + 1)
             if not found:
                 fail("ANCHOR_NOT_FOUND", path + "/quote", "quote absent from clause")
-            occurrence = raw.get("occurrence")
-            if occurrence is None and len(found) > 1:
+            occurrence = raw["occurrence"] if "occurrence" in raw else None
+            if "occurrence" not in raw and len(found) > 1:
                 fail("ANCHOR_AMBIGUOUS", path + "/occurrence", "occurrence required")
-            occurrence = occurrence or 1
+            if "occurrence" not in raw:
+                occurrence = 1
             integer(occurrence, path + "/occurrence", 1)
             if occurrence > len(found):
                 fail("ANCHOR_OCCURRENCE", path + "/occurrence", "occurrence outside matches")
@@ -620,6 +621,10 @@ class ModelWriter:
                 return
             visited.add(record_id)
             inner = next((p for p in self.plans if p["record_id"] == record_id), None)
+            stored = None if inner else self.store.record(record_id)
+            if (inner and inner["kind"] == "anchor") or (stored and stored["kind"] == "anchor"):
+                found.add(self.anchor_clause(record_id))
+                return
             rows = inner["evidence"] if inner else [{"source": json.loads(row[0])} for row in self.store.db.execute("SELECT source_json FROM assertion_sources WHERE record_id=?", (record_id,))]
             for entry in rows:
                 source = entry["source"]
