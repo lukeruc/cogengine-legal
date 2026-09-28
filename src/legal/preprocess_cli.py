@@ -13,7 +13,7 @@ class Parser(argparse.ArgumentParser):
 
 
 def main(argv=None):
-    parser = Parser(prog="python -m legal.preprocess_cli")
+    parser = Parser(prog="legal-preprocess")
     parser.add_argument("--input", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--converter-config", required=True)

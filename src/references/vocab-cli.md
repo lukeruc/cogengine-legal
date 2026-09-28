@@ -1,6 +1,6 @@
 # 词表 CLI 用法
 
-从完整交付目录运行 `python -m legal.vocab_cli`。`--vocabulary` 可放在子命令前或后。正式词表为 JSON 写法，文件名可为 `.json` 或 `.yaml`。读取和比较可使用目录，写入仅支持单文件。程序不内置业务词表。
+安装后从 `../runtime.json` 的 `commands["legal-vocab"]` 取绝对命令路径，以参数数组运行下列命令；示例中的 `python -m legal.vocab_cli` 仅供源码开发时替换使用。词表工作目录是进程工作目录，无需激活环境或设置 `PYTHONPATH`。`--vocabulary` 可放在子命令前或后。正式词表为 JSON 写法，文件名可为 `.json` 或 `.yaml`。读取和比较可使用目录，写入仅支持单文件。程序不内置业务词表。
 
 ```bash
 python -m legal.vocab_cli init --vocabulary /path/vocabulary.json

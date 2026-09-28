@@ -7,7 +7,7 @@ description: 从用户指定的归纳语料经两遍提取与两道人审生成�
 
 ## 输入与依赖
 
-用户事先指定语料用途：`induction`、`rule_exam`、`held_out`、`legal_checklist`。还需工作目录、正式词表目标路径、需转换材料的原件与转换配置。按本文件真实目录读取 `../../README.md`、`../../references/vocab-cli.md`、`../../references/data-formats.md`；按当前遍次读取本目录 `references/first-pass.md` 或 `references/second-pass.md`。转换用 `../legal-preprocess/SKILL.md`，真实合同建模验收用 `../legal-case/SKILL.md`。
+用户事先指定语料用途：`induction`、`rule_exam`、`held_out`、`legal_checklist`。还需工作目录、正式词表目标路径、需转换材料的原件与转换配置。按本文件真实目录读取 `../../README.md`、`../../runtime.json`、`../../references/vocab-cli.md`、`../../references/data-formats.md`；按当前遍次读取本目录 `references/first-pass.md` 或 `references/second-pass.md`。按 README 核对安装根与命令路径；安装信息缺失、格式错误或路径失效时报告安装问题，不从 PATH 另找工具。转换用 `../legal-preprocess/SKILL.md`，真实合同建模验收用 `../legal-case/SKILL.md`。
 
 ## 两遍两道人审
 
@@ -19,4 +19,4 @@ description: 从用户指定的归纳语料经两遍提取与两道人审生成�
 
 ## 工具用法与交接
 
-从完整目录运行 `python -m legal.vocab_cli init --vocabulary FILE`，再用 `--vocabulary FILE --input CHANGE.json` 提交正式条目。`list/show/diff` 用于检查结果；不要用案件 `init` 代替词表生成。成功交付三件套路径、词表哈希、工具回执和未完成事项。错误需按 code/path 修正；人工意见有冲突或不能解释时向用户核实。工具不机械解析自然语言意见。
+从安装信息中取 `commands["legal-vocab"]` 的绝对路径，以指定工作目录为进程工作目录，按参数数组运行 `argv=[runtime.commands["legal-vocab"],"init","--vocabulary",词表绝对路径]`，再以 `--vocabulary FILE --input CHANGE.json` 提交正式条目。`list/show/diff` 用于检查结果；完整参数和文件格式见 `../../references/vocab-cli.md`、`../../references/data-formats.md`。保留 stdout、stderr 与退出码；不要用案件 `init` 代替词表生成。成功交付三件套路径、词表哈希、工具回执和未完成事项。错误需按 code/path 修正；人工意见有冲突或不能解释时向用户核实。工具不机械解析自然语言意见。

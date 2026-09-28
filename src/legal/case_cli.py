@@ -34,7 +34,7 @@ def _check_duplicates(argv):
 
 
 def main(argv=None):
-    parser = Parser(prog="python -m legal.case_cli")
+    parser = Parser(prog="legal-case")
     commands = parser.add_subparsers(dest="command", required=True, parser_class=Parser)
     init = commands.add_parser("init")
     _add_db(init)

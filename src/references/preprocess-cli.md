@@ -1,12 +1,14 @@
 # 预处理 CLI 用法
 
-从完整交付目录运行：
+安装后从 `../runtime.json` 的 `commands["legal-preprocess"]` 取绝对命令路径，以参数数组运行；下列 `python -m legal.preprocess_cli` 仅供源码开发时替换使用。合同入库时进程工作目录为当前合同工作目录，独立预处理时为调用方指定目录，无需激活环境或设置 `PYTHONPATH`。
 
 ```bash
 python -m legal.preprocess_cli --input /path/original.pdf --output-dir /path/converted --converter-config /path/converter.json
 ```
 
 三个参数必需。输出目录应不存在或为空。配置是严格 JSON：
+
+由案件入库 skill 调用时，`--input` 使用案件目录 `inputs/materials/` 中的原件副本，`--converter-config` 使用 `inputs/converters/<素材号>/<转换号>/config.json`，`--output-dir` 使用新的空 `converted/<素材号>/<转换号>/`；独立预处理或词表初始化仍由调用方指定路径。
 
 ```json
 {"format_version":1,"argv":["/absolute/path/to/converter","--input","{input}","--output-dir","{output_dir}"]}
@@ -19,7 +21,7 @@ python -m legal.preprocess_cli --input /path/original.pdf --output-dir /path/con
 案件入库时使用成功回执中的路径：
 
 ```bash
-python -m legal.case_cli register --db /path/case.sqlite --original /path/original.pdf --text /path/converted/text.txt --metadata /path/converted/metadata.json
+python -m legal.case_cli register --db /path/contract.sqlite --original /path/original.pdf --text /path/converted/text.txt --metadata /path/converted/metadata.json
 ```
 
 再次转换已有素材时，由调用方在用于登记的元数据中加 `material_id`；预处理本身不猜案件身份。初始化语料可直接记录转换回执与文件哈希，不因此建立案件库。

@@ -1,3 +1,5 @@
 # 当前项目的 Python 代码只使用标准库（包括 sqlite3）。
 # 无需安装第三方 Python 包；此文件可直接用于 pip install -r requirements.txt。
+# 构建 wheel 所需的 setuptools、wheel 由 pyproject.toml 的 build-system 单独声明。
+# 正式安装使用 scripts/install_release.py 和构建好的 wheel；本文件不能代替包安装。
 # DOCX/PDF 等原件转换由显式配置的外部程序负责，不属于 pip 依赖。

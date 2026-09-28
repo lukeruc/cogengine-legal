@@ -79,7 +79,7 @@ def _extract_vocabulary(argv):
 
 
 def main(argv=None):
-    parser = Parser(prog="python -m legal.vocab_cli")
+    parser = Parser(prog="legal-vocab")
     parser.add_argument("--input")
     commands = parser.add_subparsers(dest="command", parser_class=Parser)
     commands.add_parser("init")
