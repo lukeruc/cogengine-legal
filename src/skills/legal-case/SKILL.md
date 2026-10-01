@@ -19,7 +19,7 @@ description: 对一份合同及其全部组成素材建立带原文出处的 SQL
 
 1. 新案先按上节建目录并复制输入，再以案件内词表副本调用 `case_cli init` 冻结词表；已有案沿用目录，先查询 `progress`、词表哈希与当前回执。
 2. 各份素材经预处理 skill 取得文本与元数据，用 `register` 登记原件和全文，再用 `split` 切分。异常影响阅读时依既有规则要求更好源件。
-3. 派通读与事件认定读手，按 `references/preparation.md` 建立阅读目录、顺序通读、带问题回读，取得概要、事件及必要主体的完整 JSON；主会话 `write` 成功后取得正式事件完整查询记录。
+3. 按 `references/preparation.md` 和 `references/reading-inputs.md` 固定版本并先准备完整阅读材料。完整条款连续分段，目标初值每任务 20,000 个 Unicode 字符；超长单条交同一读手分窗读完。各段并行全读、写独立的原文依据笔记；收齐实际已读范围后交一个归纳读手统一形成概要、主体和事件，单段由同一读手兼任。主会话提交一个 `preparation` JSON，`covered_clauses=[]`，成功后交接正式完整共用查询。
 4. 按不重叠条款批次派打标读手，参见 `references/tagging.md`。主会话逐文件 `write` 标签修订及无匹配缺口。
 5. 运行 `group` 导出逐字分组；按 `references/handoff.md` 写完整任务及输入清单，比较负责条款集合，保证每条款只有一个完整提取责任。冻结词表和共用对象完整查询结果供读手读取，多标签副本只作上下文。
 6. 各 unit 读手并行提取，参见 `references/extraction.md`。每个读手保存一份完整 `extraction` JSON，并返回路径、负责条款、数量与问题摘要。

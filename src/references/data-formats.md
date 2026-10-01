@@ -61,6 +61,8 @@
 
 非 extraction 的 covered_clauses 必须为空。extraction 必须至少声明一个负责条款；correction 可修正相同业务对象，但不会凭此新增提取完成记录。preparation 可仅更新概要，不伪造事件。CLI 不验证提交者字符串是否真是指定 agent；事件的认定权属于 skill 的职责约束，验收须检查任务交接。
 
+初读分段任务及 Markdown 笔记是 tasks 中的工作文件，不是本交换格式的写入记录，不逐份 write；主读范围不声明 extraction 完成。一个归纳读手（单段由原读手兼任）形成一份 preparation，主体/事件同一性按原文统一判断，笔记与概要不能充当正式断言来源前提。执行与导出规则见 [preparation.md](../skills/legal-case/references/preparation.md) 和 [reading-inputs.md](../skills/legal-case/references/reading-inputs.md)。
+
 ### 3.2 单记录
 
 必填 `local_id,kind,data,evidence`。local_id 是非空字符串，批内唯一，不解析其命名含义。可选 `object_id,previous_record_id` 必须同时出现；同时缺席为新对象，同时出现为修订。status 默认 active；只接受 active/withdrawn。仅 withdrawn 必须有非空 withdrawal_reason；active 不接受该字段。

@@ -13,7 +13,7 @@
 | `inputs/converters/` | `001/0001/config.json`、`001/0002/config.json`、`002/0001/config.json` 等；前段是素材号，后段是该素材的转换次数；所需非代码相对文件一并复制，源码和转换程序仍以安装位置的绝对路径引用 |
 | `converted/001/0001/` | 固定文件名 `text.txt`、`metadata.json`；同一素材重转换用 `001/0002/`，下一素材首次转换用 `002/0001/`；每次 CLI 输出到新的空目录，已有文本和元数据复制到对应目录 |
 | `groups/` | `0001/`、`0002/` 等；每次 `group --output-dir` 指向新的空目录，保留旧分组供追溯 |
-| `tasks/` | `0001-preparation.json`、`0002-tagging.json`、`0003-extraction.json` 等；每个读手收到唯一输出路径 |
+| `tasks/` | `0001-initial-reading/` 保存初读目录、原文窗口、分段任务、独立笔记和归纳任务；后续如 `0002-tagging.json`、`0003-extraction.json`；每个读手收到唯一输出路径 |
 | `submissions/` | `0001-preparation.json`、`0002-tagging.json`、`0003-extraction.json`、`0004-correction.json` 等；每份交给 `write --input` 的文件独立保存 |
 | `receipts/` | `0001-init.json`、`0002-register.json`、`0003-split.json`、`0004-write.json` 等；依实际调用顺序保存 CLI JSON 回执，失败回执加 `-error` 后缀 |
 | `reports/` | `reconcile-0001.json`、`query-0001.json` 等结果快照及 `final-0001.md`；重跑追加新序号，不覆盖旧报告 |
