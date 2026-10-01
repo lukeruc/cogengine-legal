@@ -1,0 +1,10 @@
+# Only source and the three public design documents belong in this repository.
+/*
+!/.gitignore
+!/src/
+!/docs/
+
+/docs/*
+!/docs/design.md
+!/docs/principles.md
+!/docs/spec.md

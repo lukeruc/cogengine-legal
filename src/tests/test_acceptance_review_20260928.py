@@ -1,4 +1,4 @@
-"""Independent acceptance probes; production code is deliberately unchanged.
+"""Acceptance probes updated to the approved complete-article rules.
 
 Run from legal/src:
   python -B -m unittest discover -s tests -p test_acceptance_review_20260928.py -v
@@ -7,6 +7,7 @@ Every mutating case uses a temporary database. Failures express spec requirement
 from __future__ import annotations
 
 import copy
+from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -120,7 +121,7 @@ class AcceptanceReview(unittest.TestCase):
             "evidence": copy.deepcopy(item["evidence"])}
 
     def counts(self):
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             return tuple(conn.execute("select count(*) from " + table).fetchone()[0]
                 for table in ("submissions", "objects", "record_versions", "extraction_completions"))
 
@@ -245,18 +246,18 @@ class AcceptanceReview(unittest.TestCase):
     def test_12_future_case_versions_are_rejected(self):
         # A database produced by a future version has different header checks.
         # Recreate ONLY this temporary fixture's header without v1-only CHECKs.
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             conn.execute("create table future_case_info as select * from case_info")
             conn.execute("drop table case_info")
             conn.execute("alter table future_case_info rename to case_info")
         for column in ["schema_version", "value_format_version", "code_version", "vocabulary_format_version"]:
             with self.subTest(column=column):
-                with sqlite3.connect(self.db) as conn:
+                with closing(sqlite3.connect(self.db)) as conn, conn:
                     conn.execute("update case_info set " + column + "=999")
                 try:
                     self.reject(lambda: query(self.db, {"view": "vocabulary"}), {"UNSUPPORTED_VERSION"})
                 finally:
-                    with sqlite3.connect(self.db) as conn:
+                    with closing(sqlite3.connect(self.db)) as conn, conn:
                         conn.execute("update case_info set " + column + "=1")
 
     def test_13_invalid_anchor_occurrence_is_rejected(self):
@@ -270,7 +271,7 @@ class AcceptanceReview(unittest.TestCase):
         self.complete()
         self.assertTrue(reconcile(self.db)["passed"])
         rid = self.extracted["id_map"]["d"]["record_id"]
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             data = json.loads(conn.execute("select data_json from record_versions where record_id=?", (rid,)).fetchone()[0])
             data["value"]["unit"] = "UNKNOWN"
             conn.execute("update record_versions set data_json=? where record_id=?", (json.dumps(data), rid))
@@ -352,13 +353,13 @@ class AcceptanceReview(unittest.TestCase):
     def test_24_scanner_fixed_samples(self):
         samples = [
             ("第一条 付款。\n第三条 交付。\n第三条 验收。\n", ["第一条 付款。\n", "第三条 交付。\n", "第三条 验收。\n"]),
-            ("1. 合同价款\n1.1 支付价款。\n1.3 结算。\n", ["1. 合同价款\n", "1.1 支付价款。\n", "1.3 结算。\n"]),
-            ("ARTICLE I PAYMENT\nSection 1 Amount\nBuyer pays.\nClause 2 Delivery\n", ["ARTICLE I PAYMENT\n", "Section 1 Amount\nBuyer pays.\n", "Clause 2 Delivery\n"]),
-            ("合同名称\n甲方：甲\n\n双方另有约定。\n", ["合同名称\n甲方：甲\n\n", "双方另有约定。\n"]),
+            ("1. 合同价款\n1.1 支付价款。\n1.3 结算。\n", ["1. 合同价款\n1.1 支付价款。\n1.3 结算。\n"]),
+            ("CHAPTER I PAYMENT\nSection 1 Amount\nBuyer pays.\nSection 2 Delivery\n", ["CHAPTER I PAYMENT\n", "Section 1 Amount\nBuyer pays.\n", "Section 2 Delivery\n"]),
+            ("合同名称\n甲方：甲\n\n双方另有约定。\n", ["合同名称\n甲方：甲\n\n双方另有约定。\n"]),
             ("> **1.1 付款。**\r\n> 1.2\r\n收到后付款。\r\n", ["> **1.1 付款。**\r\n", "> 1.2\r\n收到后付款。\r\n"]),
             ("第一条 正文。\n附件一 清单 附件二 图纸\n第二条 后续。\n", ["第一条 正文。\n", "附件一 清单 附件二 图纸\n", "第二条 后续。\n"]),
             ("提前\n60\n天通知。\n", ["提前\n60\n天通知。\n"]),
-            ("第一条 价格。\n\n|品名|金额|\n|A|100|\n第二条 交付。", ["第一条 价格。\n\n", "|品名|金额|\n|A|100|\n", "第二条 交付。"]),
+            ("第一条 价格。\n\n|品名|金额|\n|A|100|\n第二条 交付。", ["第一条 价格。\n\n|品名|金额|\n|A|100|\n", "第二条 交付。"]),
             ("", []), (" \r\n\n", [" \r\n\n"]),
         ]
         for text, expected in samples:

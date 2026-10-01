@@ -39,7 +39,7 @@
 - **单位配置**：单位按 code 排序后规范序列化；包含配置版本、别名等全部内容。
 - **原件**：直接对输入字节计算；**全文**：对解码后未修改文本的 UTF-8 字节计算。读文本时保留 CR、LF、CRLF，不使用会统一换行的读取方式。
 - **register**：对 `{operation:"register",original_hash,text_hash,metadata}` 的规范序列化计算；metadata 排除原件、文本、元数据文件路径提示。原始路径只在首次成功记录保存，重提不改写它。
-- **split**：对 `{operation:"split",text_version_id,algorithm_version}` 计算；当前 algorithm_version 为 `contract_v3.article.2`。旧提交保留旧版本标识。
+- **split**：对 `{operation:"split",text_version_id,algorithm_version}` 计算；当前 algorithm_version 为 `contract_v3.article.4`。旧提交保留旧版本标识。
 
 同一案件的哈希唯一性包括命令种类，防止跨命令误命中。成功回执查找在依赖当前版本的验证之前；并发执行须在取得写事务后再查一次。哈希命中后回执中的生成 ID、顺序、时间及计数均复用，只将 `replayed` 置为 true。
 

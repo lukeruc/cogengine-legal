@@ -692,7 +692,7 @@ record_links.path 以 `/data/...` 或 `/evidence/<序号>/source/...` 表示在�
 
 所有成功提交相关行只追加；工具不 UPDATE/DELETE 这些行。词表、case_info 开工后冻结。初始化失败不留下可用的半库；目标预先存在时不覆盖。写事务采用 BEGIN IMMEDIATE，SQL 插入顺序为 submissions、objects、全部版本、类型/来源/引用/完成/概要，全部成功才提交；UUID 与完整回执在插入前已算好，无需回头更新 receipt_json。case_info 与词表在同一个 init 事务写入。
 
-init 内部 input_json 为 `{operation:"init",case_id,vocabulary_hash,unit_config_hash}`，内容哈希按 §2.2 规范计算；phase=init、submitted_by=`case_cli`、sequence=1。其他命令成功时 sequence 为当前 max+1；register/split 的内部 submitted_by 分别为 `case_cli`、`splitter:contract_v3.article.2`（旧提交仍保留旧版本标识）。vocabulary_files_json 为按路径排序的 `[{path,content_hash}]`，content_hash 是各源文件实际字节 SHA-256，与合并词表逻辑哈希分开；tool_version 为实现发布版本，不在本次规格虚构已发布版本。
+init 内部 input_json 为 `{operation:"init",case_id,vocabulary_hash,unit_config_hash}`，内容哈希按 §2.2 规范计算；phase=init、submitted_by=`case_cli`、sequence=1。其他命令成功时 sequence 为当前 max+1；register/split 的内部 submitted_by 分别为 `case_cli`、`splitter:contract_v3.article.4`（旧提交仍保留旧版本标识）。vocabulary_files_json 为按路径排序的 `[{path,content_hash}]`，content_hash 是各源文件实际字节 SHA-256，与合并词表逻辑哈希分开；tool_version 为实现发布版本，不在本次规格虚构已发布版本。
 
 前驱同对象、revision 连续、不可变类别、当前条款 sequence 不重复、指向正确类别以及 JSON 内容相等属于事务内强制条件。历史 clauses 可以同地址，不能以全表 UNIQUE(text_version,sequence) 拒绝标签修订。
 
@@ -892,6 +892,8 @@ legal-preprocess --input <原件路径> --output-dir <输出目录> --converter-
 
 每个关系提取任务的 input_files 必须含：任务说明、负责条款完整文本、对应分组上下文、冻结词表、当前概要、已入库事件及其 ID/出处、已知共用对象查询结果、本文交换格式。空事件列表也是明确输入，不因没有事件而伪造一个。事件认定任务与关系任务职责不同；不得给关系读手“自行补提所有事件”的附加步骤。
 
+冻结词表必须含 units 的完整定义、slots 的 schema 及 assignments，不能仅交付槽表。事件及其他共用节点使用成功写入后的完整 query 记录，至少保留 object_id、record_id、data、evidence、provenance；events 的 description、participants、object／batch_or_stage（已存在时）不得在交接中裁掉。query 分页须全部读取，依据 next_offset 而不是默认100条视作全集；明确无事件也交付空 items。任务输入复制正式 extraction 参考和 data-formats，不另写相冲突的 missing_slot、modality 或来源级规则。内部辅助 `legal.handoff.export_extraction_tasks` 落实此文件导出与负责集合比较，不增加 CLI 命令；调用方仍决定本轮范围、主责和输出路径，数据库仍是状态依据。
+
 ### 10.2 预处理
 
 入口为 `skills/legal-preprocess/SKILL.md`，输入是明确的原件、输出目录和转换配置路径。读取共用预处理用法后，调用 §9.7 的统一 CLI；成功交接完整 JSON 回执，失败交接 code/path/message 及诊断，不提供伪造的 text/metadata 路径。skill 只解释和调用工具，不判断法律含义；影响阅读的质量问题由调用方依既有规则要求更好源件。
@@ -905,6 +907,15 @@ legal-preprocess --input <原件路径> --output-dir <输出目录> --converter-
 入口为 `skills/legal-case/SKILL.md`。开始前明确合同材料清单、已有合同工作目录或新合同工作根目录、新库需用的词表路径；需转换的材料另有转换配置。新合同先依 §1.6 建目录、复制材料及配置，再使用目录内路径运行预处理和案件 CLI 的 init/register/split/write/query/group/reconcile；续做同一合同沿用该目录。三个读手说明按 §1.4 派发。最终交接合同工作目录、库路径、case_id、词表哈希、本轮范围、最新对账回执及未解决问题；对账有 errors 时交接结果须写明未完成。
 
 入库完成的可观察条件：所声明本轮范围的六查报告零 errors，checked_sequence 等于当前最大 submission sequence，报告范围确实覆盖本轮条款；报告只覆盖单一旧文本不能宣称整个案件完成。notices 单列。新增材料、重新转换、修正写入后旧报告仍保留并显示过时。
+
+#### 10.3.1 通读准备的内部阅读顺序（decisions §1.39）
+
+1. 用全部当前已提供文本、条款与表格建立阅读目录，列清前言、article、签署和附件；记录固定文本／条款版本，区分实际提供与仅被引用的材料。
+2. 按原文顺序通读。长文以完整 article 分窗；超过单窗的 article 分连续片段并保留共同标题和范围，不改变基础条款或完整提取主责。每窗记录称谓、包／阶段、定义、用于条件或时间基准的事项、跨条引用和待核对问题，附条款版本和原文位置。
+3. 围绕具体理解问题回读相关原文与已有记录；每项最终标明找到依据、材料未提供或原文歧义，保留其问题与对应位置。不强制每段只读一次，不用未提供材料或概要补造合同规定。
+4. 形成原定概要及 preparation 主体／事件／锚与引用；主会话成功 write 后按 §10.1 交付完整正式查询结果。
+
+准备结束条件：全部已提供阅读范围有实际阅读记录；跨条引用和待核对项都有明确处置；概要与事件断言可定位原文。阅读目录／笔记作为合同 tasks 中普通文件保存，初值保持未读／未核对，实际处理后填写结论；不能将异常列表之外的范围自动标为读过。此条件只定义 preparation 内的阅读完成，不是断言级语义闸，也不使 covered_clauses 从 [] 改为已提取。增量仍读新增材料和理解必需的已有范围，沿用事件身份与既定追加规则。
 
 ### 10.4 初始化
 
@@ -969,7 +980,7 @@ d48b432865dcc66fb3693dc07b6b12b364b8d558c9d01dde317ff085c1cb16b3
 
 该版本只导出章节/条款行号、标题及异常；读取时使用普通 read_text，会归一化换行；条款结束行延伸到后续条款前；无编号部分不会独立成为完整条款清单。因此不能把它的 total_chars、title 或 line_end 直接作为本项目原文和字符覆盖的依据。
 
-原算法版本 `contract_v3.adapted.1` 的空行切片规则已被验收报告 §4.0 否定。整改后的版本为 `contract_v3.article.2`；识别器仍以已核对的 contract_v3 扫描方法为基础，组织层级和 article 范围参照其 render_structure、split_topics 行为，但不把渲染后的重排文本入库。旧版回执和条款对象保留，已有文本版本不自动重切。
+原算法版本 `contract_v3.adapted.1` 的空行切片规则已被验收报告 §4.0 否定。当前整改版本为 `contract_v3.article.4`；保留 article.2／article.3 的旧标识。识别器仍以已核对的 contract_v3 扫描方法为基础，组织层级和 article 范围参照其 render_structure、split_topics 行为，但不把渲染后的重排文本入库。旧版回执和条款对象保留，已有文本版本不自动重切。
 
 ### 12.2 标题候选识别
 
@@ -984,7 +995,7 @@ d48b432865dcc66fb3693dc07b6b12b364b8d558c9d01dde317ff085c1cb16b3
 7. 原扫描器的 `chapters/articles` 是候选结构，不直接等于本项目最终的打标层级。英文 `ARTICLE`、单层十进制编号在不同合同中可能是章或首层 article；依据转换文本中的标题层级、编号序列、相邻标题与正文共同判定。有章时选章下一级 article；无章时选第一层合同条目。文档题名、目录、附件目录不是据标题级别自动判定为章。无法可靠判定时保留文字并产生结构异常，不将孤立条件或续段伪装成 article。
 8. 交叉引用仅因软换行来到行首，不得成为标题边界。需要可靠标题标记或独立编号条款形态，并检查前后文是否为同一句的续接。`_resolve_decimal_chapters`、`_apply_party_restart` 只供候选判断，不删除正文；标题借读不改变原文。
 
-Markdown 标题层级的确定规则：先排除目录、附表目录及显式 `.unnumbered` 的导航标题；顶层若显式写“第…条”、`ARTICLE`、`Clause` 或 `Section`，按无章合同处理，顶层即 article。顶层显式写章标题时，其下一层为 article。没有这些字样时，若下一层标题分别出现在至少两个顶层标题之下，按有章合同处理；否则顶层为 article。下一层明确写条标题时也按有章合同处理。article 以下更深标题仅属于其正文，不独立切分。对无法由上述证据可靠认定的输入，应保留完整原文并在结构异常中显明不确定性；转换程序应尽可能输出真实标题层级及可见编号。
+Markdown 标题层级的确定规则：先排除目录、附表目录及显式 `.unnumbered` 的导航标题；顶层若显式写“第…条”、`ARTICLE`、`Clause` 或 `Section`，按无章合同处理，顶层即 article。顶层显式写章标题时，其下一层为 article。只有一个无编号合同题名时，它是上下文，标题以下的合同条目确定层级。无章十进制中 `1.` 下 `1.1/1.2`、`2.` 下 `2.1` 的编号归属优先，它们是两个完整article的内部小节，不因子标题分布多个顶层就判有章。没有这些归属证据时，下一层标题分别出现在至少两个顶层之下可作为有章线索；下一层明确写条标题也作为线索。article 以下更深标题仅属于其正文。真实条标题包有 Markdown 加粗、方括号或属性时识别副本去标记；可靠独立 CLAUSE／第…条优先于子段的视觉层级，不能吞入前言或被内部列表拆开。对无法可靠认定的输入，应保留原文并显明不确定性。
 
 旧源码的精确识别函数作为此版本的参照；源码变化须核对哈希、升级算法版本及用例。已经保存的条款不自动重切。识别的局限通过无编号段提示保留，不为本次规格悄悄修改词法范围。
 
@@ -998,7 +1009,7 @@ Markdown 标题层级的确定规则：先排除目录、附表目录及显式 `
 4. **表格与上下文**：表格随所属 article 完整保留，表头、费率行、共同限制及表后说明须可共同阅读。章标题和共用引言可作为分组阅读上下文重复提供，但其基础区间仍只占全文字符一次。转换若已丢失行列关系，应由预处理异常说明，切分器不猜列坐标。
 5. **字符覆盖**：加入0和全文长度，按已接受的区域起点构造连续半开区间；所有区间不重叠且拼接逐字符等于登记全文。区间之间的空白归前一区间，开头空白归开头区域；空文本零区间，全空白非空文本保留一个区间。不得借用 render_structure 的清理、重排和软换行合并结果替换原文。
 6. **编号与地址**：按区间顺序赋 sequence=1..N；原文编号按已登记文本的真实标题保存，可空、可重复，不以编号当稳定 ID。真实 DOCX 自动编号应由显式配置的转换器写入新 `text.txt` 并与原件核对；只看目录不能凭空补号。既有文本及锚不就地更改。
-7. **异常**：编号跳跃、重复、混用以及不确定归属仍记 structure_anomaly；无编号不自动生成异常，也不自动宣称无内容。每条异常锚到相关原文，reported_by 使用 `splitter:contract_v3.article.2`。字符不守恒则整次 split 失败。
+7. **异常**：编号跳跃、重复及不确定归属仍记 structure_anomaly；比较只在已接受 article 的同一编号系列、同一深度、同一父号及同一章／附件区域内进行，不把内部数字项与 CLAUSE 比较。无编号不自动生成异常，也不自动宣称无内容。每条异常锚到相关原文，reported_by 使用 `splitter:contract_v3.article.4`。字符不守恒则整次 split 失败。
 8. **事务**：条款、新锚、结构缺口及成功回执同一事务；classification=unclassified、tags=[]，不写 extraction_completions。结构 gap 的证据可引用本批锚，锚再固定本批条款。split 的原始管理输入和回执保留算法版本。
 
 ### 12.4 固定样例
