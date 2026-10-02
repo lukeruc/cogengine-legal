@@ -4,6 +4,31 @@
 
 当事人性质代码：obligor、recipient、power_holder、power_subject、permission_holder、permission_counterparty、protected_party、restricted_party。模态代码：obligation、power、permission、immunity；可为 null。
 
+## 1. 冻结词表与槽适用规则
+
+词表源文件为 JSON 写法的 YAML，顶层恰为 `{format_version:1,units:[],slots:[],assignments:[]}`。案件 `query --view vocabulary` 的 `items` 中返回该完整结构及 `hash`；hash 是冻结快照的身份，不是新增的词表源字段。读取全部单元定义、槽结构及归属，不能用名称或局部槽表替代完整快照，案内不改词表。
+
+| 内容 | 字段与用途 |
+|---|---|
+| `units` | 每项必需 `id,name,description`；可选 `aliases,examples,replaces,origin_unit_id`。按 description 判断业务范围，不按任务分组或条款标题限定关系类别 |
+| `slots` | 每项必需 `id,name,description,value_schema`；可选 `examples,replaces`。value_schema 按 §5.2 声明可用值及容器结构，不等于已填写的合同值 |
+| `assignments` | 每项恰为 `{unit_id,slot_id}`，二者须指向快照中的条目；一槽可归属多个单元，同一归属对不重复 |
+
+id、origin_unit_id、replaces成员使用规范UUID；origin/replaces可指历史条目。name/description非空，aliases/examples为非空字符串数组；aliases/examples/replaces缺席时为[]。写关系使用单元id，写detail使用槽id，并匹配该槽的实际value_schema。
+
+```text
+通用槽 = 全部槽 − 出现在任一 assignment 中的槽
+某单元的适用槽 = 显式归属该单元的槽 ∪ 通用槽
+```
+
+完全没有assignment的槽适用于全部单元；已归属其他单元、但未归属当前单元的槽不因此成为通用槽。detail的适用范围取决于owner关系的unit_id，不取决于读手任务的unit_id。可用槽不是必填槽：只有原文有对应规定才填写，无依据时不补值、不制造null；查询的missing_slots只表示适用但未填，也不等于应创建missing_slot缺口。
+
+正例：若快照的“时点或期间”槽无任何归属，通知关系可用它表达原文的通知期限；relative仍须给准确的既有事件引用。不能以“没有分配给通知单元”为由报该槽不可用。
+
+反例：若“付款安排”只归属付款单元，不能直接挂到知识产权关系。负责条款另有付款规定时，应按其内容建立付款关系，再用付款单元的专属槽及通用槽；任务附知识产权unit_id不妨碍这样提取。
+
+报告缺口前核对完整单元定义、适用槽和实际值语法，分别判断真正缺槽、值语法不足、事件未准备及原文歧义。事件缺失/不匹配在issues中说明原句、原因及影响，不能误写成槽不存在。表达限制沿用既有记录与issues，不新增缺口类型；能表达的部分仍须处理。
+
 ## 2. 通用类型与规范化
 
 ### 2.1 输入规则
