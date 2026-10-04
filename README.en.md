@@ -76,6 +76,14 @@ All four skills share the same CLIs. The three commands are installed in a dedic
 
 ## Getting Started
 
+### Recommended: Ask an Agent to Install It
+
+Copy the following prompt to your agent:
+
+```text
+Please install and configure cogengine-legal for me. Project URL: https://github.com/lukeruc/cogengine-legal. First read the project README and the installation guide it links to, then follow the documentation to complete the installation and configuration.
+```
+
 ### 1. Prepare the Prerequisites
 
 - **Python 3.11, 3.12, or 3.13**, with `sqlite3`, `venv`, and pip. Building also requires `setuptools>=68` and `wheel`.

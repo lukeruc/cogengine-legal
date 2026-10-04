@@ -76,6 +76,14 @@
 
 ## 如何开始使用
 
+### 推荐：让 agent 帮你安装
+
+将下面这段话复制给 agent：
+
+```text
+请帮我安装并配置 cogengine-legal。项目地址：https://github.com/lukeruc/cogengine-legal。请先阅读项目 README 及其中链接的安装说明，再按文档完成安装配置。
+```
+
 ### 1. 准备运行条件
 
 - **Python 3.11、3.12 或 3.13**，带有 `sqlite3`、`venv` 和 pip；构建还需要 `setuptools>=68` 与 `wheel`。
