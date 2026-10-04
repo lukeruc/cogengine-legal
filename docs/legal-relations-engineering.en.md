@@ -1,6 +1,6 @@
 # An Engineering Approach to Representing Legal Relationships
 
-[中文](legal-relations-engineering.md)
+[中文](legal-relations-engineering.md) · [Lawyers' edition](legal-relations-engineering-for-lawyers.en.md)
 
 ## 1. From a Single Answer to Sustained Production Use
 

@@ -1,6 +1,6 @@
 # 法律关系的工程化表达
 
-[English](legal-relations-engineering.en.md)
+[English](legal-relations-engineering.en.md) · [律师版](legal-relations-engineering-for-lawyers.md)
 
 ## 一、从一次回答到持续交付
 

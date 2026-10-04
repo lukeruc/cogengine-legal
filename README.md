@@ -12,7 +12,7 @@
 
 本项目让 agent 按共同的记载规则提取法律关系，由程序检查并保存结果。合同内容、原文依据和更正历史形成可持续维护的记录，供后续任务共同使用。合同审查、履约管理和争议分析等应用，可以在这些记录上加入各自的规则、事实和判断。
 
-关于项目的完整思路，见[工程师版文章](docs/legal-relations-engineering.md)和[律师版文章](docs/legal-relations-engineering-for-lawyers.md)。
+关于项目的完整思路，见[《法律关系的工程化表达》](docs/legal-relations-engineering.md)。
 
 ## 输入与产出
 

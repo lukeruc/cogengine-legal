@@ -12,7 +12,7 @@ When an agent handles contract work, one correct result does not establish that 
 
 This project has agents extract legal relationships using shared recording conventions, while software validates and stores the results. Contract content, source references, and correction history become records that can be maintained and reused across tasks. Applications such as contract review, performance management, and dispute analysis can add their own rules, facts, and judgments on top of these records.
 
-For a fuller explanation, see the [engineers' edition](docs/legal-relations-engineering.en.md) and the [lawyers' edition](docs/legal-relations-engineering-for-lawyers.en.md) of the project essay.
+For a fuller explanation, see [An Engineering Approach to Representing Legal Relationships](docs/legal-relations-engineering.en.md).
 
 ## Inputs and Outputs
 
