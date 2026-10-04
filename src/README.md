@@ -4,7 +4,7 @@
 
 ## 安装前准备
 
-- 取得完整仓库，进入 `src/`。只复制某一个 `SKILL.md` 无法安装或运行工具。
+- 从 [v0.1.0 发布页面](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.0)下载完整源码并解压，或取得该标签对应的完整仓库，再进入 `src/`。只复制某一个 `SKILL.md` 无法安装或运行工具。
 - 明确一个 **Python 3.11、3.12 或 3.13 的绝对路径**。该解释器须带 `sqlite3`、`venv` 和 pip；构建 wheel 时还须有 `setuptools>=68` 和 `wheel`。核心程序本身没有第三方 Python 运行依赖，`requirements.txt` 不能代替包安装。
 - 选择一个可写的**安装根**。它应独立于本仓库源码目录和合同工作目录；下文以 `/path/to/legal-install` 示意。
 - 宿主需要能读取完整 skill 目录及其相对引用、运行本地命令，并支持项目既定的子任务和人工文件意见交接。宿主注册方式由该宿主决定。

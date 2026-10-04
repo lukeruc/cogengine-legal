@@ -2,6 +2,8 @@
 
 [中文](README.md) · [English](README.en.md)
 
+Current release: [v0.1.0](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.0).
+
 **Infrastructure for working with legal relationship information.** The project currently focuses on contracts. It organizes contractual rights and obligations, conditions, restrictions, and their connections into structured records linked to the original text, for querying, verification, and use in downstream applications.
 
 The main output is a SQLite contract database containing the original files, full text, relationship records, source references, and revision history. The aim is to make reading the database equivalent to reading the contract: users should be able to retrieve what the contract stipulates and check each record against its source.
@@ -95,7 +97,7 @@ The core Python software has no third-party runtime dependencies. The agent host
 
 ### 2. Install the Software and Register the Skills
 
-Obtain the complete repository and run the following commands from its root, replacing the example absolute paths with paths on your machine:
+Download and extract the complete source from the [v0.1.0 release page](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.0), then run the following commands from the source root, replacing the example absolute paths with paths on your machine:
 
 ```bash
 cd src
@@ -137,7 +139,7 @@ Following the skill, the agent creates the contract working directory, prepares 
 ## Current Scope and Status
 
 - **Scope**: record what one contract and its constituent documents stipulate. Actual performance, the legal validity of provisions, and analysis across contracts belong to downstream applications.
-- **Version**: the current source version is `0.1.0`. No GitHub tag or release has been created yet. The steps above build and install from source.
+- **Version**: the current release is [v0.1.0](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.0), an initial development release. The steps above build and install from that release's source.
 - **Implementation**: four skills, three CLIs, and installation and registration verification scripts are available. [Automated tests](src/tests/) are maintained alongside the source.
 - **Quality limits**: software can check explicit constraints such as formats, references, source anchors, and clause coverage. Passing validation does not prove that the contract's meaning has been represented completely and accurately; extraction quality must be assessed against the particular contract.
 - **Vocabulary and materials**: vocabulary coverage, original document quality, and model performance all affect the result. Information that cannot be represented, or lacks sufficient supporting material, must be identified at handover. Finding no record does not establish that the contract contains no such provision.
