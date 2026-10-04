@@ -150,3 +150,7 @@ agent 会按 skill 建立合同工作目录、准备材料、组织阅读与提�
 | 安装、注册、升级与故障处理 | [安装与使用说明](src/README.md) |
 | 查询命令与输入输出格式 | [案件 CLI](src/references/case-cli.md) · [词表 CLI](src/references/vocab-cli.md) · [预处理 CLI](src/references/preprocess-cli.md) · [数据格式](src/references/data-formats.md) |
 | 浏览对外文档 | [文档目录](docs/README.md) |
+
+## 许可证
+
+本项目采用 [MIT 许可证](LICENSE)。

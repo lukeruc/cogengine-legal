@@ -1,6 +1,7 @@
 # Track source and public documentation; keep internal work documents local.
 /*
 !/.gitignore
+!/LICENSE
 !/README.md
 !/README.en.md
 !/src/

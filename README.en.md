@@ -153,3 +153,7 @@ The project essays are available in both languages. The installation guide, skil
 | Install, register, upgrade, and troubleshoot | [Installation and usage guide](src/README.md) |
 | Look up commands and input/output formats | [Case CLI](src/references/case-cli.md) · [Vocabulary CLI](src/references/vocab-cli.md) · [Preprocessing CLI](src/references/preprocess-cli.md) · [Data formats](src/references/data-formats.md) |
 | Browse public documentation | [Documentation index](docs/README.md) |
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
