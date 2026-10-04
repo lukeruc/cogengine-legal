@@ -130,3 +130,27 @@ Contractual relationships currently provide the scope for applying this approach
 Extending the approach to other legal relationships will require examining new information sources, factual grounds, and ways in which relationships change. Work on contracts can contribute methods and experience; the scope of their applicability requires further validation.
 
 Ultimately, an engineering approach to legal relationships aims to turn provisions in legal materials into organized, supported, maintainable information, giving subsequent analysis a foundation that can be inspected and reused.
+
+## 8. Planned Extensions
+
+The current release provides infrastructure: it organizes the legal relationships stipulated in a contract into structured information that can be queried, maintained, and traced to the original text. Different tasks can share this information, making it a starting point for further applications. The near-term plans are contract review, followed by contract revision and clause drafting. A longer-term direction is contract management based on structured contracts.
+
+### Contract Review
+
+Contract review is the most natural application of this foundation. Assessing whether an arrangement is appropriate first requires establishing what the contract stipulates, including the parties' rights and obligations, applicable conditions, limitations and exceptions, and the effect of other clauses. The project's structured representation is intended to preserve these details and their connections.
+
+On this basis, contractual arrangements can be evaluated from a specified review perspective and against applicable review criteria. For example, recording a payment obligation's amount, deadline, and prerequisites together gives the reviewer a more complete account of the arrangement to assess. Review comments can also be linked to the particular arrangements being evaluated and their supporting text, allowing users to understand, verify, and act on them.
+
+### Contract Revision and Clause Drafting
+
+Review often leads to a further question: how should the existing arrangements change, and how should those changes be expressed in the contract? Contract revision and clause drafting therefore form the next application direction.
+
+Contract clauses express the legal relationships the parties wish to establish. Changing payment conditions, adjusting the scope of liability, or adding an obligation each involves determining the specific content of those relationships. Structured representation can therefore help both with understanding an existing contract and with clarifying what proposed clauses need to express. The understanding developed around a contract can carry through from review to revision and drafting, and provide a basis for checking whether the revised terms reflect the intended arrangements.
+
+### Contract Management Based on Structured Contracts
+
+The longer-term prospect is to keep this information useful after the contract is signed, forming the basis of a management system built on structured contracts.
+
+The specific arrangements stipulated in a contract are valuable to its ongoing management. Beyond basic information such as price, subject matter, and signing date, the parties' obligations, conditions for performance, deadlines, ways of exercising rights, and the effects of one arrangement on another may all matter to subsequent business activity. When these details remain available for querying and use, contract management can be organized around specific rights and obligations and incorporate facts about actual performance to support work throughout the life of the contract.
+
+This direction extends the project's central idea: an accurate understanding of a contract should yield work that remains usable over time. Review uses that work to evaluate existing arrangements; revision and drafting use it to express intended arrangements; and contract management keeps it useful in subsequent business activity. The infrastructure being developed provides a shared information foundation for these applications.

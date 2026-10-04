@@ -115,3 +115,27 @@ Subsequent work can build on that material. Contract review can add review crite
 The engineering approach to legal relationships takes the form of a method through which professional work can accumulate. A careful reading produces a complete record; shared conventions, connections between entries, and textual evidence make the record open to review and continuing correction. Tools can participate in this work, and others can proceed from what has already been established.
 
 Contractual relationships provide the current scope for applying the method. Its capacity to represent complex arrangements must continue to be tested against real contracts. Extension to other legal relationships would also require reconsidering the sources of material and the questions to be established. The project seeks to develop the ability to represent legal relationships accurately and keep the resulting work available for continuing use.
+
+## 8. Planned Extensions
+
+The current release provides methods and tools for accurately recording contractual provisions, preserving their supporting evidence, and making them available for subsequent work. Once the provisions and their connections have been clearly recorded, further legal work can proceed on that basis. The near-term plans are contract review, followed by contract revision and clause drafting. A longer-term direction is contract management founded on this complete account of the contract's provisions.
+
+### Contract Review
+
+Reviewing a contract first requires establishing what the parties have agreed. The specific rights and obligations, their conditions, limitations and exceptions, and the effect of other clauses all bear on the review conclusions. A clear record of these matters and their textual basis is a prerequisite for evaluating the provisions.
+
+The arrangements can then be assessed in light of the client's requirements and the applicable review criteria. Reviewing payment terms, for example, requires considering the amount, deadline, and prerequisites together. A complete record helps bring these matters within the review. The resulting comments can identify the provisions concerned and their original wording, facilitating verification and further action.
+
+### Contract Revision and Clause Drafting
+
+After establishing the existing provisions and providing review comments, it is often necessary to adjust the arrangements to reflect the parties' requirements or to add new provisions. Revision and drafting both require clarity about what should be retained, what should change, and what rights and obligations the parties ultimately wish to establish.
+
+Whether the task involves adjusting payment conditions, changing the scope of liability, or introducing an obligation, the parties' requirements must be expressed in specific clauses. Understanding the existing provisions and their effects on one another helps identify the matters affected by a revision. A clear record of the proposed arrangements can guide drafting and the subsequent review of the wording. The work already undertaken to understand the contract can therefore continue to support the expression of the parties' intended arrangements and the assessment of whether the revised clauses reflect those intentions.
+
+### Contract Management Based on Structured Contracts
+
+The longer-term plan is to keep established and fully recorded contractual provisions available to the relevant people after signature, and to build a contract management system on that basis.
+
+After a contract is signed, its provisions remain an important basis for organizing performance, asserting rights, and addressing disagreements. Beyond basic information such as price, subject matter, and signing date, management requires knowing what each party must do, which conditions govern performance, which deadlines apply, and how one arrangement affects other provisions. Preserving a complete account of these matters and their textual basis allows them to be consulted and relied upon in subsequent work, with facts about actual performance brought in to support management.
+
+These three directions extend the project's purpose: to keep professional work based on an accurate understanding of a contract available for continuing use. Review draws on that work to evaluate provisions; revision and drafting use it to formulate or adjust them; and contract management continues to use them during performance. The recording methods and tools currently provided preserve a foundation that can be checked, handed over, and carried forward into that subsequent work.
