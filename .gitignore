@@ -1,10 +1,12 @@
-# Only source and the three public design documents belong in this repository.
+# Track source, public documentation, and the three existing internal design documents.
 /*
 !/.gitignore
+!/README.md
 !/src/
 !/docs/
+!/work-docs/
 
-/docs/*
-!/docs/design.md
-!/docs/principles.md
-!/docs/spec.md
+/work-docs/*
+!/work-docs/design.md
+!/work-docs/principles.md
+!/work-docs/spec.md

@@ -4,6 +4,14 @@
 
 仓库的 `src/` 是完整交付源码目录。三个命令共用一个专用 Python 环境，四个 skill 共用这些命令。合同原件、词表工作副本和建模产物另存于合同工作目录。
 
+## 文档
+
+- [法律关系的工程化表达](docs/legal-relations-engineering.md)（[English](docs/legal-relations-engineering.en.md)）：项目的目的、建模思路与技术原理。
+- [法律关系的工程化表达（律师版）](docs/legal-relations-engineering-for-lawyers.md)（[English](docs/legal-relations-engineering-for-lawyers.en.md)）：面向没有技术背景的法律读者，解释法律关系为何可以工程化，以及本项目怎样实现。
+- [`docs/`](docs/README.md)：对外文档集，包含设计思想文章；技术文档待整理。
+- [`work-docs/`](work-docs/)：内部工作文档集，保存设计、规格及开发讨论材料；Git 沿用此前的选择性跟踪范围。
+- [`src/README.md`](src/README.md)：安装、注册和使用说明。
+
 ## 快速安装
 
 准备带 `sqlite3`、`venv`、pip 的 Python 3.11、3.12 或 3.13。构建 wheel 还需要 `setuptools>=68` 和 `wheel`。在仓库根目录执行以下命令，并把示例绝对路径改为本机路径：
