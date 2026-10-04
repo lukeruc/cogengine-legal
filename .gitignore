@@ -1,12 +1,8 @@
-# Track source, public documentation, and the three existing internal design documents.
+# Track source and public documentation; keep internal work documents local.
 /*
 !/.gitignore
 !/README.md
 !/src/
 !/docs/
-!/work-docs/
 
-/work-docs/*
-!/work-docs/design.md
-!/work-docs/principles.md
-!/work-docs/spec.md
+/work-docs/

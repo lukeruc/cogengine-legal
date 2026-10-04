@@ -9,7 +9,7 @@
 - [法律关系的工程化表达](docs/legal-relations-engineering.md)（[English](docs/legal-relations-engineering.en.md)）：项目的目的、建模思路与技术原理。
 - [法律关系的工程化表达（律师版）](docs/legal-relations-engineering-for-lawyers.md)（[English](docs/legal-relations-engineering-for-lawyers.en.md)）：面向没有技术背景的法律读者，解释法律关系为何可以工程化，以及本项目怎样实现。
 - [`docs/`](docs/README.md)：对外文档集，包含设计思想文章；技术文档待整理。
-- [`work-docs/`](work-docs/)：内部工作文档集，保存设计、规格及开发讨论材料；Git 沿用此前的选择性跟踪范围。
+- `work-docs/`：仅在本地维护的内部工作文档集，保存设计、规格及开发讨论材料，不纳入 Git 跟踪或 GitHub 同步。
 - [`src/README.md`](src/README.md)：安装、注册和使用说明。
 
 ## 快速安装
