@@ -1,4 +1,4 @@
-# Track source and public documentation; keep internal work documents local.
+# Track source, public documentation, and the vocabulary example.
 /*
 !/.gitignore
 !/LICENSE
@@ -6,5 +6,10 @@
 !/README.en.md
 !/src/
 !/docs/
+!/vocab/
+
+# Keep vocabulary supporting files local.
+/vocab/*
+!/vocab/vocabulary.json
 
 /work-docs/

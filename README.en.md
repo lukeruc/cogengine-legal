@@ -76,6 +76,12 @@ The project includes four skills for agents and three command-line tools for car
 
 All four skills share the same CLIs. The three commands are installed in a dedicated Python environment. Installed skills use the installation information to invoke them, so the environment does not need to be activated manually for each use.
 
+## Example Vocabulary
+
+The project provides an [example vocabulary](vocab/vocabulary.json) derived from 22 contract documents using this tool. It contains 14 units and 96 slots, illustrating the vocabulary structure and offering a starting point for adaptation. Check its suitability for your particular contract before use.
+
+[Download the vocabulary JSON](https://raw.githubusercontent.com/lukeruc/cogengine-legal/main/vocab/vocabulary.json), save it in your vocabulary working directory, and supply the file's absolute path when ingesting a contract. Download this example separately; it is not included in the published `v0.1.0` source archive.
+
 ## Getting Started
 
 ### Recommended: Ask an Agent to Install It

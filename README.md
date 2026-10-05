@@ -76,6 +76,12 @@
 
 四个 skill 共用同一套 CLI。三个命令安装在一个专用 Python 环境中；安装后的 skill 根据安装信息调用命令，无须每次手动激活环境。
 
+## 词表示例
+
+项目提供一份通过本工具从 22 份合同语料归纳形成的[词表示例](vocab/vocabulary.json)，包含 14 个单元、96 个槽，可用于了解词表结构，并作为自行调整的起点。使用前应结合具体合同核对其适用范围。
+
+[下载词表 JSON](https://raw.githubusercontent.com/lukeruc/cogengine-legal/main/vocab/vocabulary.json)，保存到自己的词表工作目录，在入库时提供该文件的绝对路径。该示例需另行下载，不包含在已发布的 `v0.1.0` 源码归档中。
+
 ## 如何开始使用
 
 ### 推荐：让 agent 帮你安装
