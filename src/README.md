@@ -1,10 +1,12 @@
 # 法律关系建模工具：安装与使用
 
-当前发行版本：`0.1.0`。GitHub 仓库的 `src/` 是完整交付源码目录，包含一个 Python 包、三个命令、四个 skill、共用说明及安装脚本。本项目为一份特定合同建立带原文出处的 SQLite 记录；合同数据不放在程序安装目录。
+当前发行版本：`0.1.1`。GitHub 仓库的 `src/` 是完整交付源码目录，包含一个 Python 包、三个命令、四个 skill、共用说明及安装脚本。本项目为一份特定合同建立带原文出处的 SQLite 记录；合同数据不放在程序安装目录。
+
+完整发行源码还包含仓库根目录下的 [词表示例](https://github.com/lukeruc/cogengine-legal/blob/v0.1.1/vocab/vocabulary.json)。使用时将其复制到自己的词表工作目录，并向入库 skill 提供该文件路径；词表作为独立数据使用。
 
 ## 安装前准备
 
-- 从 [v0.1.0 发布页面](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.0)下载完整源码并解压，或取得该标签对应的完整仓库，再进入 `src/`。只复制某一个 `SKILL.md` 无法安装或运行工具。
+- 从 [v0.1.1 发布页面](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.1)下载完整源码并解压，或取得该标签对应的完整仓库，再进入 `src/`。只复制某一个 `SKILL.md` 无法安装或运行工具。
 - 明确一个 **Python 3.11、3.12 或 3.13 的绝对路径**。该解释器须带 `sqlite3`、`venv` 和 pip；构建 wheel 时还须有 `setuptools>=68` 和 `wheel`。核心程序本身没有第三方 Python 运行依赖，`requirements.txt` 不能代替包安装。
 - 选择一个可写的**安装根**。它应独立于本仓库源码目录和合同工作目录；下文以 `/path/to/legal-install` 示意。
 - 宿主需要能读取完整 skill 目录及其相对引用、运行本地命令，并支持项目既定的子任务和人工文件意见交接。宿主注册方式由该宿主决定。
@@ -30,7 +32,7 @@ DIST_DIR=/absolute/path/to/legal-dist
 "$PYTHON_BIN" scripts/build_release.py --output-dir "$DIST_DIR" --python "$PYTHON_BIN"
 ```
 
-本版本正常生成文件名形如 `cogengine_legal-0.1.0-py3-none-any.whl`。检查实际产物文件名，再把它用于下一步。wheel 包含 `legal/` 的运行模块、`schema.sql` 和 `config/units.v1.json`；测试、真实合同、词表内容和特定合同的辅助脚本不进入运行包。四个 skill 与共用说明由安装脚本从同一份交付源码复制到安装根。
+本版本正常生成文件名形如 `cogengine_legal-0.1.1-py3-none-any.whl`。检查实际产物文件名，再把它用于下一步。wheel 包含 `legal/` 的运行模块、`schema.sql` 和 `config/units.v1.json`；测试、真实合同、词表内容和特定合同的辅助脚本不进入运行包。四个 skill 与共用说明由安装脚本从同一份交付源码复制到安装根。
 
 ## 第二步：安装程序与共用环境
 
@@ -38,7 +40,7 @@ DIST_DIR=/absolute/path/to/legal-dist
 
 ```bash
 INSTALL_ROOT=/absolute/path/to/legal-install
-WHEEL_FILE=/absolute/path/to/legal-dist/cogengine_legal-0.1.0-py3-none-any.whl
+WHEEL_FILE=/absolute/path/to/legal-dist/cogengine_legal-0.1.1-py3-none-any.whl
 "$PYTHON_BIN" scripts/install_release.py \
   --install-root "$INSTALL_ROOT" \
   --python "$PYTHON_BIN" \

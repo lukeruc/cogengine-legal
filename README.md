@@ -2,7 +2,7 @@
 
 [中文](README.md) · [English](README.en.md)
 
-当前版本：[v0.1.0](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.0)。
+当前版本：[v0.1.1](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.1)。
 
 **处理法律关系信息的基础工具。** 当前以合同为应用对象，将合同规定的权利义务、条件、限制及相互联系，整理为带原文依据的结构化记录，供查询、复核和后续应用使用。
 
@@ -80,7 +80,7 @@
 
 项目提供一份通过本工具从 22 份合同语料归纳形成的[词表示例](vocab/vocabulary.json)，包含 14 个单元、96 个槽，可用于了解词表结构，并作为自行调整的起点。使用前应结合具体合同核对其适用范围。
 
-[下载词表 JSON](https://raw.githubusercontent.com/lukeruc/cogengine-legal/main/vocab/vocabulary.json)，保存到自己的词表工作目录，在入库时提供该文件的绝对路径。该示例需另行下载，不包含在已发布的 `v0.1.0` 源码归档中。
+词表示例随 `v0.1.1` 的完整源码提供，位于 `vocab/vocabulary.json`，也可[单独下载 JSON](https://raw.githubusercontent.com/lukeruc/cogengine-legal/v0.1.1/vocab/vocabulary.json)。将文件复制到自己的词表工作目录，在入库时提供该文件的绝对路径。
 
 ## 如何开始使用
 
@@ -103,7 +103,7 @@
 
 ### 2. 安装程序并注册 skill
 
-从 [v0.1.0 发布页面](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.0)下载完整源码并解压，在源码根目录执行以下命令；将示例绝对路径替换为本机路径：
+从 [v0.1.1 发布页面](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.1)下载完整源码并解压，在源码根目录执行以下命令；将示例绝对路径替换为本机路径：
 
 ```bash
 cd src
@@ -115,7 +115,7 @@ INSTALL_ROOT=/absolute/path/to/legal-install
 "$PYTHON_BIN" scripts/install_release.py \
   --install-root "$INSTALL_ROOT" \
   --python "$PYTHON_BIN" \
-  --wheel "$DIST_DIR/cogengine_legal-0.1.0-py3-none-any.whl"
+  --wheel "$DIST_DIR/cogengine_legal-0.1.1-py3-none-any.whl"
 ```
 
 安装脚本创建或复用安装根中的 `.venv`，安装三个命令，并复制四个 skill 和共用资料。随后按宿主已有机制，注册 `<install-root>/skills/` 下的四个完整 skill 目录，并使用[注册核对脚本](src/scripts/verify_registration.py)核对。
@@ -144,7 +144,7 @@ agent 会按 skill 建立合同工作目录、准备材料、组织阅读与提�
 ## 当前范围与状态
 
 - **范围**：针对一份合同及其组成文件，记录文本规定的内容。实际履行情况、条款效力及跨合同组合分析由后续应用处理。
-- **版本**：当前发布版本为 [v0.1.0](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.0)，属于初始开发阶段。上述步骤从该版本源码构建安装。
+- **版本**：当前发布版本为 [v0.1.1](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.1)，属于初始开发阶段。上述步骤从该版本源码构建安装。
 - **实现**：已提供四个 skill、三个 CLI、安装及注册核对脚本；[自动化测试](src/tests/)随源码维护。
 - **质量边界**：程序可检查格式、引用、出处和条款覆盖等明确约束。校验通过仍不能证明合同含义已经完整、准确地表达，实际提取质量需要结合具体合同检验。
 - **词表与材料**：词表的适用范围、原件质量和模型表现都会影响结果。无法表达或材料不足的内容须在交接中说明；没有查询到记录，不能直接推定合同未作约定。
