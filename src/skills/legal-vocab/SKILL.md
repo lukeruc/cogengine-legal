@@ -5,6 +5,23 @@ description: 对已有全局法律关系词表按案件缺口或律师要求进�
 
 # 词表治理
 
+## 安装路径
+
+将下列占位路径替换为宿主提供的本文件绝对路径，先解析符号链接，再取父目录：
+
+```python
+from pathlib import Path
+
+skill_dir = Path("/host/skills/legal-vocab/SKILL.md").resolve(strict=True).parent
+install_root = skill_dir.parent.parent
+runtime_path = install_root / "runtime.json"
+print(install_root / "README.md")
+print(runtime_path)
+print(install_root / "references")
+```
+
+先完成上述定位，再按输出的绝对路径读取资料。本文件中的相对资料路径均以 `skill_dir` 为基准，与 shell 工作目录无关。CLI 的绝对路径从核验后的 `runtime.json` 取得；源码目录须先按 README 安装，再注册安装后的 skill。
+
 ## 输入与依赖
 
 明确当前正式词表路径、工作目录，以及案件清单或律师提出的变更要求。按本文件真实目录读取 `../../README.md`、`../../runtime.json`、`../../references/vocab-cli.md`、`../../references/data-formats.md`。按 README 核对安装根与命令路径；安装信息缺失、格式错误或路径失效时报告安装问题，不从 PATH 另找工具。要查看尚未转换的原件时读取 `../legal-preprocess/SKILL.md`。

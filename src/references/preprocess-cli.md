@@ -1,5 +1,7 @@
 # 预处理 CLI 用法
 
+本说明安装后位于 `<install-root>/references/`。下文 `../runtime.json` 以本说明文件的真实目录为基准，指向 `<install-root>/runtime.json`，与 shell 工作目录无关。
+
 安装后从 `../runtime.json` 的 `commands["legal-preprocess"]` 取绝对命令路径，以参数数组运行；下列 `python -m legal.preprocess_cli` 仅供源码开发时替换使用。合同入库时进程工作目录为当前合同工作目录，独立预处理时为调用方指定目录，无需激活环境或设置 `PYTHONPATH`。
 
 ```bash

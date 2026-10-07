@@ -5,6 +5,23 @@ description: 从用户指定的归纳语料经两遍提取与两道人审生成�
 
 # 首版词表初始化
 
+## 安装路径
+
+将下列占位路径替换为宿主提供的本文件绝对路径，先解析符号链接，再取父目录：
+
+```python
+from pathlib import Path
+
+skill_dir = Path("/host/skills/legal-initialize/SKILL.md").resolve(strict=True).parent
+install_root = skill_dir.parent.parent
+runtime_path = install_root / "runtime.json"
+print(install_root / "README.md")
+print(runtime_path)
+print(install_root / "references")
+```
+
+先完成上述定位，再按输出的绝对路径读取资料。本文件中的相对资料路径均以 `skill_dir` 为基准，与 shell 工作目录无关。CLI 的绝对路径从核验后的 `runtime.json` 取得；源码目录须先按 README 安装，再注册安装后的 skill。
+
 ## 输入与依赖
 
 用户事先指定语料用途：`induction`、`rule_exam`、`held_out`、`legal_checklist`。还需工作目录、正式词表目标路径、需转换材料的原件与转换配置。按本文件真实目录读取 `../../README.md`、`../../runtime.json`、`../../references/vocab-cli.md`、`../../references/data-formats.md`；按当前遍次读取本目录 `references/first-pass.md` 或 `references/second-pass.md`。按 README 核对安装根与命令路径；安装信息缺失、格式错误或路径失效时报告安装问题，不从 PATH 另找工具。转换用 `../legal-preprocess/SKILL.md`，真实合同建模验收用 `../legal-case/SKILL.md`。

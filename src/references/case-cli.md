@@ -1,5 +1,7 @@
 # 案件 CLI 用法
 
+本说明安装后位于 `<install-root>/references/`。下文 `../runtime.json` 以本说明文件的真实目录为基准，指向 `<install-root>/runtime.json`，与 shell 工作目录无关。
+
 安装后从 `../runtime.json` 的 `commands["legal-case"]` 取绝对命令路径，以参数数组运行下列命令；示例中的 `python -m legal.case_cli` 仅供源码开发时替换使用。合同工作目录是进程工作目录，无需激活环境或设置 `PYTHONPATH`。所有命令将 `--db` 写在子命令后。每次 stdout 返回一份 UTF-8 JSON；成功退出 0，输入或业务校验失败退出 2，文件/数据库故障退出 3，对账已执行但有错误退出 4。错误格式为 `{ok:false,errors:[{code,path,message}],errors_truncated:false}`。
 
 ## 入库文件位置和命名
