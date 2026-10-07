@@ -17,6 +17,7 @@ SOURCE = Path(__file__).resolve().parents[1]
 SKILLS = ("legal-case", "legal-vocab", "legal-preprocess", "legal-initialize")
 COMMANDS = ("legal-case", "legal-vocab", "legal-preprocess")
 REFERENCES = ("case-cli.md", "vocab-cli.md", "preprocess-cli.md", "data-formats.md")
+SCRIPTS = ("verify_registration.py",)
 MARKER = ".cogengine-legal-environment"
 ROOT_MARKER = ".cogengine-legal-install"
 
@@ -126,7 +127,7 @@ def temporary_parent(root: Path) -> Path:
 
 
 def copy_delivery(root: Path) -> None:
-    if (root / "skills").is_symlink() or (root / "references").is_symlink() or (root / "README.md").is_symlink():
+    if any((root / name).is_symlink() for name in ("skills", "references", "scripts", "README.md")):
         raise RuntimeError("refusing to replace linked installation resources")
     for name in REFERENCES:
         if (root / "references" / name).is_symlink():
@@ -134,6 +135,9 @@ def copy_delivery(root: Path) -> None:
     for name in SKILLS:
         if (root / "skills" / name).is_symlink():
             raise RuntimeError(f"refusing to replace linked skill: {name}")
+    for name in SCRIPTS:
+        if (root / "scripts" / name).is_symlink():
+            raise RuntimeError(f"refusing to replace linked script: {name}")
     for name in SKILLS:
         source = SOURCE / "skills" / name
         target = root / "skills" / name
@@ -148,6 +152,10 @@ def copy_delivery(root: Path) -> None:
     refs.mkdir(exist_ok=True)
     for name in REFERENCES:
         shutil.copy2(SOURCE / "references" / name, refs / name)
+    scripts = root / "scripts"
+    scripts.mkdir(exist_ok=True)
+    for name in SCRIPTS:
+        shutil.copy2(SOURCE / "scripts" / name, scripts / name)
     if (root / "README.md").is_symlink():
         raise RuntimeError("refusing to replace README symlink")
     shutil.copy2(SOURCE / "README.md", root / "README.md")

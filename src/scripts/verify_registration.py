@@ -51,8 +51,6 @@ def main() -> int:
             expected = root / "skills" / name / "SKILL.md"
             if path != expected.resolve(strict=True) or not path.is_file():
                 raise ValueError(f"{name} does not resolve to the installed skill")
-            if not (path.parent / ".." / ".." / "README.md").is_file():
-                raise ValueError(f"{name} cannot reach the installed README")
             if not (path.parent / ".." / ".." / "runtime.json").is_file():
                 raise ValueError(f"{name} cannot reach runtime.json")
         for name in REFERENCES:

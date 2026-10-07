@@ -15,16 +15,17 @@ from pathlib import Path
 skill_dir = Path("/host/skills/legal-preprocess/SKILL.md").resolve(strict=True).parent
 install_root = skill_dir.parent.parent
 runtime_path = install_root / "runtime.json"
-print(install_root / "README.md")
 print(runtime_path)
 print(install_root / "references")
 ```
 
-先完成上述定位，再按输出的绝对路径读取资料。本文件中的相对资料路径均以 `skill_dir` 为基准，与 shell 工作目录无关。CLI 的绝对路径从核验后的 `runtime.json` 取得；源码目录须先按 README 安装，再注册安装后的 skill。
+先完成上述定位，再按输出的绝对路径读取资料。本文件中的相对资料路径均以 `skill_dir` 为基准，与 shell 工作目录无关。CLI 的绝对路径从核验后的 `runtime.json` 取得。本 skill、参考资料及 CLI 均使用安装目录内的副本。
+
+读取安装信息后，核对 `format_version` 为整数 `1`、`release_version` 为非空字符串、`install_root` 等于上述真实安装根、`environment_root` 指向其中的 `.venv`。`python` 及 `commands` 中的 `legal-case`、`legal-vocab`、`legal-preprocess` 必须是该环境内存在且可执行的绝对路径；保留环境内 Python 的启动路径。安装信息不符时报告安装问题，停止依赖它的业务调用。
 
 ## 输入
 
-原件路径、空输出目录路径、转换配置 JSON 路径。先解析本文件真实目录，读取 `../../README.md`、`../../runtime.json` 和 `../../references/preprocess-cli.md`。按 README 核对安装根与命令路径；安装信息缺失、格式错误或路径失效时报告安装问题，不从 PATH 另找工具。调用方应明确转换器及支持的文件格式；本 skill 不从文件扩展名猜工具。
+原件路径、空输出目录路径、转换配置 JSON 路径。先解析本文件真实目录，读取 `../../runtime.json` 和 `../../references/preprocess-cli.md`。安装信息缺失、格式错误或路径失效时报告安装问题，不从 PATH 另找工具。调用方应明确转换器及支持的文件格式；本 skill 不从文件扩展名猜工具。
 
 ## 步骤
 

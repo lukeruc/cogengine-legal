@@ -2,7 +2,7 @@
 
 [中文](README.md) · [English](README.en.md)
 
-Current release: [v0.1.2](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.2).
+Current release: [v0.1.3](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.3).
 
 **Infrastructure for working with legal relationship information.** The project currently focuses on contracts. It organizes contractual rights and obligations, conditions, restrictions, and their connections into structured records linked to the original text, for querying, verification, and use in downstream applications.
 
@@ -76,11 +76,13 @@ The project includes four skills for agents and three command-line tools for car
 
 All four skills share the same CLIs. The three commands are installed in a dedicated Python environment. Installed skills use the installation information to invoke them, so the environment does not need to be activated manually for each use.
 
+Installation creates independent copies of the CLIs, skills, reference materials, and registration verification script. The downloaded source can be removed after installation. Skills receive their operating instructions as part of the installation and do not require the project README at runtime.
+
 ## Example Vocabulary
 
 The project provides an [example vocabulary](vocab/vocabulary.json) derived from 22 contract documents using this tool. It contains 14 units and 96 slots, illustrating the vocabulary structure and offering a starting point for adaptation. Check its suitability for your particular contract before use.
 
-The example is included in the complete `v0.1.2` source at `vocab/vocabulary.json` and can also be [downloaded separately as JSON](https://raw.githubusercontent.com/lukeruc/cogengine-legal/v0.1.2/vocab/vocabulary.json). Copy the file to your vocabulary working directory and supply its absolute path when ingesting a contract.
+The example is included in the complete `v0.1.3` source at `vocab/vocabulary.json` and can also be [downloaded separately as JSON](https://raw.githubusercontent.com/lukeruc/cogengine-legal/v0.1.3/vocab/vocabulary.json). Copy the file to your vocabulary working directory and supply its absolute path when ingesting a contract.
 
 ## Getting Started
 
@@ -103,7 +105,7 @@ The core Python software has no third-party runtime dependencies. The agent host
 
 ### 2. Install the Software and Register the Skills
 
-Download and extract the complete source from the [v0.1.2 release page](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.2). Replace the absolute paths below with paths on your machine; `SOURCE_ROOT` is the source root containing `src/`. Run the whole block in a single shell invocation, from any working directory:
+Download and extract the complete source from the [v0.1.3 release page](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.3). Replace the absolute paths below with paths on your machine; `SOURCE_ROOT` is the source root containing `src/`. Run the whole block in a single shell invocation, from any working directory:
 
 ```bash
 SOURCE_ROOT="/absolute/path/to/cogengine-legal"
@@ -115,7 +117,7 @@ INSTALL_ROOT="/absolute/path/to/legal-install"
 "$PYTHON_BIN" "$SOURCE_ROOT/src/scripts/install_release.py" \
   --install-root "$INSTALL_ROOT" \
   --python "$PYTHON_BIN" \
-  --wheel "$DIST_DIR/cogengine_legal-0.1.2-py3-none-any.whl"
+  --wheel "$DIST_DIR/cogengine_legal-0.1.3-py3-none-any.whl"
 ```
 
 The installer creates or reuses `.venv` under the installation root, installs the three commands, and copies the four skills and shared reference materials. Then register all four complete skill directories under `<install-root>/skills/` using your host's registration mechanism. Their entry paths must resolve to the installed files. Register the installed directories; `src/skills/` in the source tree has no installation information. Finally, run the registration check in [step 3 of the installation guide](src/README.md#第三步在宿主中注册四个-skill) and confirm that it returns `"host_registration":"verified"`.
@@ -145,7 +147,7 @@ Following the skill, the agent creates the contract working directory, prepares 
 ## Current Scope and Status
 
 - **Scope**: record what one contract and its constituent documents stipulate. Actual performance, the legal validity of provisions, and analysis across contracts belong to downstream applications.
-- **Version**: the current release is [v0.1.2](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.2), an initial development release. The steps above build and install from that release's source.
+- **Version**: the current release is [v0.1.3](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.3), an initial development release. The steps above build and install from that release's source.
 - **Implementation**: four skills, three CLIs, and installation and registration verification scripts are available. [Automated tests](src/tests/) are maintained alongside the source.
 - **Quality limits**: software can check explicit constraints such as formats, references, source anchors, and clause coverage. Passing validation does not prove that the contract's meaning has been represented completely and accurately; extraction quality must be assessed against the particular contract.
 - **Vocabulary and materials**: vocabulary coverage, original document quality, and model performance all affect the result. Information that cannot be represented, or lacks sufficient supporting material, must be identified at handover. Finding no record does not establish that the contract contains no such provision.

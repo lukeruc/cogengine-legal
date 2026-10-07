@@ -1,12 +1,12 @@
 # 法律关系建模工具：安装与使用
 
-当前发行版本：`0.1.2`。GitHub 仓库的 `src/` 是完整交付源码目录，包含一个 Python 包、三个命令、四个 skill、共用说明及安装脚本。本项目为一份特定合同建立带原文出处的 SQLite 记录；合同数据不放在程序安装目录。
+当前发行版本：`0.1.3`。GitHub 仓库的 `src/` 是完整交付源码目录，包含一个 Python 包、三个命令、四个 skill、共用说明及安装脚本。本项目为一份特定合同建立带原文出处的 SQLite 记录；合同数据不放在程序安装目录。
 
-完整发行源码还包含仓库根目录下的 [词表示例](https://github.com/lukeruc/cogengine-legal/blob/v0.1.2/vocab/vocabulary.json)。使用时将其复制到自己的词表工作目录，并向入库 skill 提供该文件路径；词表作为独立数据使用。
+完整发行源码还包含仓库根目录下的 [词表示例](https://github.com/lukeruc/cogengine-legal/blob/v0.1.3/vocab/vocabulary.json)。使用时将其复制到自己的词表工作目录，并向入库 skill 提供该文件路径；词表作为独立数据使用。
 
 ## 安装前准备
 
-- 从 [v0.1.2 发布页面](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.2)下载完整源码并解压，或取得该标签对应的完整仓库。下文 `SOURCE_ROOT` 指向包含 `src/` 的源码根目录。只复制某一个 `SKILL.md` 无法安装或运行工具。
+- 从 [v0.1.3 发布页面](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.3)下载完整源码并解压，或取得该标签对应的完整仓库。下文 `SOURCE_ROOT` 指向包含 `src/` 的源码根目录。只复制某一个 `SKILL.md` 无法安装或运行工具。
 - 明确一个 **Python 3.11、3.12 或 3.13 的绝对路径**。该解释器须带 `sqlite3`、`venv` 和 pip；构建 wheel 时还须有 `setuptools>=68` 和 `wheel`。核心程序本身没有第三方 Python 运行依赖，`requirements.txt` 不能代替包安装。
 - 选择一个可写的**安装根**。它应独立于本仓库源码目录和合同工作目录；下文以 `/path/to/legal-install` 示意。
 - 宿主需要能读取完整 skill 目录及其相对引用、运行本地命令，并支持项目既定的子任务和人工文件意见交接。宿主注册方式由该宿主决定。
@@ -33,7 +33,7 @@ DIST_DIR="/absolute/path/to/legal-dist"
 "$PYTHON_BIN" "$SOURCE_ROOT/src/scripts/build_release.py" --output-dir "$DIST_DIR" --python "$PYTHON_BIN"
 ```
 
-本版本正常生成文件名形如 `cogengine_legal-0.1.2-py3-none-any.whl`。检查实际产物文件名，再把它用于下一步。wheel 包含 `legal/` 的运行模块、`schema.sql` 和 `config/units.v1.json`；测试、真实合同、词表内容和特定合同的辅助脚本不进入运行包。四个 skill 与共用说明由安装脚本从同一份交付源码复制到安装根。
+本版本正常生成文件名形如 `cogengine_legal-0.1.3-py3-none-any.whl`。检查实际产物文件名，再把它用于下一步。wheel 包含 `legal/` 的运行模块、`schema.sql` 和 `config/units.v1.json`；测试、真实合同、词表内容和特定合同的辅助脚本不进入运行包。四个 skill 与共用说明由安装脚本从同一份交付源码复制到安装根。
 
 ## 第二步：安装程序与共用环境
 
@@ -43,14 +43,14 @@ DIST_DIR="/absolute/path/to/legal-dist"
 SOURCE_ROOT="/absolute/path/to/cogengine-legal"
 PYTHON_BIN="/absolute/path/to/python"
 INSTALL_ROOT="/absolute/path/to/legal-install"
-WHEEL_FILE="/absolute/path/to/legal-dist/cogengine_legal-0.1.2-py3-none-any.whl"
+WHEEL_FILE="/absolute/path/to/legal-dist/cogengine_legal-0.1.3-py3-none-any.whl"
 "$PYTHON_BIN" "$SOURCE_ROOT/src/scripts/install_release.py" \
   --install-root "$INSTALL_ROOT" \
   --python "$PYTHON_BIN" \
   --wheel "$WHEEL_FILE"
 ```
 
-脚本先核对选定解释器的版本、SQLite、venv 和 pip，再在安装根创建本项目专用的 `.venv`。三个命令 `legal-case`、`legal-vocab`、`legal-preprocess` 安装在同一环境。脚本从源码和安装根之外的临时目录核对包版本、SQL 与单位配置，运行三个 `--help`，并用临时词表执行数据库初始化及查询。全部通过后，复制 README、四个完整 skill 目录与共用说明，再原子写入 `runtime.json`。临时词表和数据库不会成为正式合同数据。
+脚本先核对选定解释器的版本、SQLite、venv 和 pip，再在安装根创建本项目专用的 `.venv`。三个命令 `legal-case`、`legal-vocab`、`legal-preprocess` 及全部运行模块、SQL 与单位配置通过 wheel 安装为该环境内的独立副本。脚本从源码和安装根之外的临时目录核对包版本及资源，运行三个 `--help`，并用临时词表执行数据库初始化及查询。全部通过后，复制四个完整 skill 目录、共用说明、注册核对脚本和供安装维护时查阅的 README，再原子写入 `runtime.json`。临时词表和数据库不会成为正式合同数据。
 
 成功回执包含 `"ok":true`、`"program_installed":true` 和 `"host_registration":"pending"`。最后一个字段表示**程序安装完成，宿主中的 skill 注册尚待完成**。失败时脚本向 stderr 输出 `{"ok":false,"error":"..."}`，不能把部分生成的目录视为成功安装。
 
@@ -58,9 +58,11 @@ WHEEL_FILE="/absolute/path/to/legal-dist/cogengine_legal-0.1.2-py3-none-any.whl"
 
 ```text
 <install-root>/
-  README.md
+  README.md                    安装维护说明，skill 运行不读取
   runtime.json
   .venv/
+  scripts/
+    verify_registration.py
   skills/
     legal-case/SKILL.md
     legal-vocab/SKILL.md
@@ -75,17 +77,18 @@ WHEEL_FILE="/absolute/path/to/legal-dist/cogengine_legal-0.1.2-py3-none-any.whl"
 
 安装根还会有本项目的环境标记文件，用来防止安装脚本接管其他项目的环境。`.venv` 为这份安装共用；四个 skill、后续会话及不同合同不会分别创建环境。
 
+安装后的 skill、CLI 和注册核对脚本均可脱离下载的源码运行。构建、安装使用源码；业务运行和注册核对只使用安装目录中的副本。删除下载的源码不会影响已安装工具，四个 skill 也不以 README 的存在或读取为运行前提。
+
 ## 第三步：在宿主中注册四个 skill
 
-按宿主已有机制，分别注册 `<install-root>/skills/` 下的四个**完整目录**：`legal-case`、`legal-vocab`、`legal-preprocess`、`legal-initialize`。若宿主支持目录符号链接，可以链接整个 skill 目录；不要只复制 `SKILL.md`。宿主看到的入口最终必须能解析到安装根内对应的 `SKILL.md`，并能读取同根的 `README.md`、`runtime.json`、`references/` 及兄弟 skill。注册目标是安装后的目录；源码目录 `src/skills/` 不含运行所需的 `runtime.json`。
+按宿主已有机制，分别注册 `<install-root>/skills/` 下的四个**完整目录**：`legal-case`、`legal-vocab`、`legal-preprocess`、`legal-initialize`。若宿主支持目录符号链接，可以链接整个 skill 目录；不要只复制 `SKILL.md`。宿主看到的入口最终必须能解析到安装根内对应的 `SKILL.md`，并能读取同根的 `runtime.json`、`references/` 及兄弟 skill。注册目标是安装后的目录；源码目录 `src/skills/` 不含运行所需的 `runtime.json`。
 
-注册后，用源码中的脚本核对。把每个 `--skill` 的值改为**宿主实际看到的** `SKILL.md` 绝对路径；若宿主使用链接，就填链接位置下的路径：
+注册后，用安装目录中的脚本副本核对。`RUNTIME_PYTHON` 填入该安装 `runtime.json` 的 `python` 值；每个 `--skill` 的值改为**宿主实际看到的** `SKILL.md` 绝对路径，若宿主使用链接，就填链接位置下的路径：
 
 ```bash
-SOURCE_ROOT="/absolute/path/to/cogengine-legal"
-PYTHON_BIN="/absolute/path/to/python"
+RUNTIME_PYTHON="/absolute/path/from/runtime/python"
 INSTALL_ROOT="/absolute/path/to/legal-install"
-"$PYTHON_BIN" "$SOURCE_ROOT/src/scripts/verify_registration.py" \
+"$RUNTIME_PYTHON" "$INSTALL_ROOT/scripts/verify_registration.py" \
   --install-root "$INSTALL_ROOT" \
   --skill "legal-case=/host/skills/legal-case/SKILL.md" \
   --skill "legal-vocab=/host/skills/legal-vocab/SKILL.md" \
@@ -101,8 +104,9 @@ INSTALL_ROOT="/absolute/path/to/legal-install"
 
 | 路径 | 起点与用途 |
 |---|---|
-| `SOURCE_ROOT/src/scripts/` | 下载的源码根目录，用于构建、安装和注册核对 |
-| `<install-root>/` | 安装后的 README、`runtime.json`、环境、skill 与共用资料 |
+| `SOURCE_ROOT/src/scripts/` | 下载的源码根目录，用于构建、安装 |
+| `<install-root>/` | 安装后的 `runtime.json`、环境、skill、共用资料与脚本副本 |
+| `<install-root>/scripts/verify_registration.py` | 安装后的注册核对脚本，使用该安装的 Python 执行 |
 | 宿主提供的 `SKILL.md` 路径 | 可能经过符号链接，先解析为真实文件路径，再取父目录 |
 | skill 中的 `../../runtime.json` 等资料路径 | 以该 `SKILL.md` 的真实目录为基准 |
 | 共用 CLI 说明中的 `../runtime.json` | 以该说明文件的真实目录 `<install-root>/references/` 为基准 |
@@ -116,12 +120,11 @@ from pathlib import Path
 skill_dir = Path("/host/skills/legal-case/SKILL.md").resolve(strict=True).parent
 install_root = skill_dir.parent.parent
 runtime_path = install_root / "runtime.json"
-print(install_root / "README.md")
 print(runtime_path)
 print(install_root / "references")
 ```
 
-先解析符号链接，再取父目录，才能从宿主入口回到安装根。后续读取使用示例输出的绝对路径。每个 skill 中的 `../../README.md`、`../../runtime.json` 和 `../../references/` 均以 `skill_dir` 为基准，与 shell 当前工作目录无关。
+先解析符号链接，再取父目录，才能从宿主入口回到安装根。后续读取使用示例输出的绝对路径。每个 skill 中的 `../../runtime.json` 和 `../../references/` 均以 `skill_dir` 为基准，与 shell 当前工作目录无关。运行所需规则写在 skill 与配套参考资料中。
 
 `runtime.json` 顶层恰有 `format_version`、`release_version`、`install_root`、`environment_root`、`python`、`commands`；`commands` 恰含 `legal-case`、`legal-vocab`、`legal-preprocess`。skill 检查版本、真实安装根、`.venv` 及可执行文件后，按参数数组执行所需命令的绝对路径，例如：
 
