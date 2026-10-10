@@ -24,6 +24,8 @@ UUID示意值在实际文件中使用查询所得正式ID。unit_id在普通分�
 
 案件任务只说明该合同的范围、输入和输出。缺口、值形态、当事人性质和来源级直接引用正式说明，避免临时任务把missing_slot误写为原文留空，或把modality放进parties。
 
+主会话在现有任务说明中交付 [helper-tools.md](helper-tools.md) 的用法、已核验 runtime.python、两个已安装辅助脚本及输入/输出的绝对路径；可将本说明作为已有 input_files 的资料，不增加任务字段。find_quote 使用完整 clauses 查询快照，不能使用分组摘要。两个工具按需处理文件；读手不调用正式 CLI 或数据库，需补 ID/原文由主会话交付。
+
 已有内部辅助`legal.handoff.export_extraction_tasks(db_path, plans, output_dir, resource_root, clause_ids=None)`可以完成此导出，不是新增CLI。用安装的共用解释器导入该函数；resource_root是已核验的安装根，output_dir是合同tasks下新的空子目录。plans各项包含task_id、unit_id、responsible_clauses、context_clauses、group_file、output_file；主会话自行选定主责，group_file指向合同groups中的正式导出。clause_ids省略表示全部当前文本条款，指定时表示本轮范围。函数比较负责集合、当前条款版本、分组和配置身份，保存完整输入及规范任务，返回路径和数据库提交序号；派发前如数据库已变，重新核对版本而不是继续使用陈旧任务。
 
 读手返回`{task_id,output_file,responsible_clauses,record_counts,issues}`，responsible_clauses仍是对象／记录ID对清单。主会话读取摘要和提交文件中的issues，按 [SKILL.md](../SKILL.md#接收结果与明确问题) 处理已暴露的未完成或矛盾，再每份文件调用一次write并保存完整回执。声称其他任务或已有记录承载时须核对实际责任、具体记录及对应内容，不能只接受转交说明。真实限制保留原句、原因和影响，不要求issues为空；回执成功和机械覆盖不能代替原文语义验收。

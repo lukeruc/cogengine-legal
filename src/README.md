@@ -64,7 +64,11 @@ WHEEL_FILE="/absolute/path/to/legal-dist/cogengine_legal-0.1.3-py3-none-any.whl"
   scripts/
     verify_registration.py
   skills/
-    legal-case/SKILL.md
+    legal-case/
+      SKILL.md
+      scripts/find_quote.py
+      scripts/build_submission.py
+      references/helper-tools.md
     legal-vocab/SKILL.md
     legal-preprocess/SKILL.md
     legal-initialize/SKILL.md
@@ -134,6 +138,10 @@ cwd  = "/absolute/contract-work-directory"
 ```
 
 因此无须激活环境、设置 `PYTHONPATH`，也无须让宿主切换 Python。相对输入先按用户原工作目录解析；传给 CLI 的合同工作副本路径使用绝对路径。含空格或中文的路径是单个参数，不把整条调用拼成 shell 字符串。安装信息缺失、根路径不符或命令失效时，skill 应报告安装问题，不能改用 PATH 上的同名工具。
+
+入库 skill 的两个辅助脚本随完整目录安装，共用模块随 wheel 装入同一环境。主会话将 runtime.python、脚本和任务文件的绝对路径交给读手，按需运行精确引句定位或提交组装；用法见 [辅助脚本说明](skills/legal-case/references/helper-tools.md)。脚本只处理文件，不访问数据库，生成成功不表示正式写入成功。runtime 的 commands 保持三个正式 CLI。
+
+已有安装要采用这次源码变更时，重新构建 wheel，再用安装命令的 `--upgrade` 更新程序及 skill。安装脚本默认复用同版本程序；即使版本号相同，更新源码构建的程序副本也要使用 `--upgrade`，否则新脚本可能缺少对应共用模块。
 
 三个命令的用途：
 

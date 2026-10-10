@@ -164,6 +164,18 @@ def version(value, path="/format_version"):
         fail("UNSUPPORTED_VERSION", path, "only version 1 is supported")
 
 
+def quote_positions(text, quote):
+    """Exact Unicode substring starts, including overlapping occurrences."""
+    if not quote:
+        fail("INVALID_ARGUMENT", "/quote", "empty quote")
+    found = []
+    index = text.find(quote)
+    while index >= 0:
+        found.append(index)
+        index = text.find(quote, index + 1)
+    return found
+
+
 def file_bytes(path):
     try:
         return Path(path).read_bytes()

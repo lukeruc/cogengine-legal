@@ -7,11 +7,12 @@ import re
 from collections import Counter
 
 from .formats import (Invalid, InvalidBatch, fields, fail, hash_json, integer, new_id,
-                      nonempty, pointer_get, require_object, uuid_value, version)
+                      nonempty, pointer_get, quote_positions, uuid_value)
 from .storage import CaseStore, _json
+from .submission_structure import KINDS, validate_envelope, validate_record_envelope
 from .values import matches_schema, validate_value, validate_units, check_contract
 
-KINDS = {"clause", "anchor", "node", "relation", "detail", "reference", "gap", "no_content"}
+
 NATURES = {"obligor", "recipient", "power_holder", "power_subject", "permission_holder",
            "permission_counterparty", "protected_party", "restricted_party"}
 MODALITIES = {"obligation", "power", "permission", "immunity"}
@@ -36,47 +37,20 @@ class ModelWriter:
 
     def prepare(self):
         doc = self.document
-        fields(doc, ["format_version", "case_id", "vocabulary_hash", "submitted_by", "phase",
-                     "covered_clauses", "records", "issues"], ["overview"])
-        version(doc["format_version"])
+        validate_envelope(doc)
         if doc["case_id"] != self.store.case_id():
             fail("CASE_MISMATCH", "/case_id", "case ID differs")
         if doc["vocabulary_hash"] != self.store.info["vocabulary_hash"]:
             fail("VOCABULARY_MISMATCH", "/vocabulary_hash", "frozen vocabulary differs")
-        nonempty(doc["submitted_by"], "/submitted_by")
-        if not isinstance(doc["phase"], str) or doc["phase"] not in {"preparation", "tagging", "extraction", "correction"}:
-            fail("INVALID_ARGUMENT", "/phase")
-        if not isinstance(doc["records"], list) or not isinstance(doc["covered_clauses"], list) or not isinstance(doc["issues"], list):
-            fail("INVALID_ARGUMENT", "", "records, covered_clauses and issues must be arrays")
-        for i, issue in enumerate(doc["issues"]):
-            nonempty(issue, f"/issues/{i}")
-        if doc["phase"] != "extraction" and doc["covered_clauses"] or doc["phase"] == "extraction" and not doc["covered_clauses"]:
-            fail("COVERAGE_INVALID", "/covered_clauses", "only extraction declares completed clauses")
-        if "overview" in doc:
-            if doc["phase"] != "preparation":
-                fail("INVALID_ARGUMENT", "/overview", "overview only belongs to preparation")
-            fields(doc["overview"], ["text_versions", "body", "authored_by"], [], "/overview")
-            if not isinstance(doc["overview"]["text_versions"], list) or not doc["overview"]["text_versions"]:
-                fail("INVALID_ARGUMENT", "/overview/text_versions")
-            nonempty(doc["overview"]["body"], "/overview/body")
-            nonempty(doc["overview"]["authored_by"], "/overview/authored_by")
         for i, raw in enumerate(doc["records"]):
             path = f"/records/{i}"
-            fields(raw, ["local_id", "kind", "data", "evidence"],
-                   ["object_id", "previous_record_id", "status", "withdrawal_reason"], path)
-            local = nonempty(raw["local_id"], path + "/local_id")
+            validate_record_envelope(raw, path)
+            local = raw["local_id"]
             if local in self.local:
                 fail("DUPLICATE_LOCAL_ID", path + "/local_id", "duplicate local ID")
             kind = raw["kind"]
-            require_object(raw["data"], path + "/data")
-            if not isinstance(raw["evidence"], list):
-                fail("INVALID_ARGUMENT", path + "/evidence", "expected array")
-            if not isinstance(kind, str) or kind not in KINDS:
-                fail("INVALID_ARGUMENT", path + "/kind", "unsupported record kind")
             revision = 1
             previous = None
-            if ("object_id" in raw) != ("previous_record_id" in raw):
-                fail("INVALID_ARGUMENT", path, "object_id and previous_record_id must appear together")
             if "object_id" in raw:
                 object_id = uuid_value(raw["object_id"], path + "/object_id")
                 previous = uuid_value(raw["previous_record_id"], path + "/previous_record_id")
@@ -101,12 +75,7 @@ class ModelWriter:
             if object_id in self.by_object:
                 fail("DUPLICATE_ID", path + "/object_id", "object appears twice in one submission")
             status = raw.get("status", "active")
-            if not isinstance(status, str) or status not in {"active", "withdrawn"}:
-                fail("INVALID_ARGUMENT", path + "/status")
             if status == "withdrawn":
-                if previous is None:
-                    fail("INVALID_ARGUMENT", path + "/status", "new object cannot be withdrawn")
-                nonempty(raw.get("withdrawal_reason"), path + "/withdrawal_reason")
                 if object_id == self.store.info["contract_object_id"]:
                     fail("IMMUTABLE_RECORD", path, "contract container cannot be withdrawn")
                 old = self.store.record(previous)
@@ -115,8 +84,6 @@ class ModelWriter:
                 old_evidence = [{"path": e["path"], "source": json.loads(e["source_json"])} for e in self.store.db.execute("SELECT * FROM assertion_sources WHERE record_id=? ORDER BY path", (previous,))]
                 if sorted(raw["evidence"], key=lambda e: e["path"]) != old_evidence:
                     fail("WITHDRAWAL_DATA_CHANGED", path + "/evidence", "withdrawal must copy prior evidence")
-            elif "withdrawal_reason" in raw:
-                fail("UNKNOWN_FIELD", path + "/withdrawal_reason")
             record_id = new_id()
             plan = {"path": path, "local_id": local, "kind": kind, "object_id": object_id,
                     "record_id": record_id, "revision": revision, "previous": previous,
@@ -259,11 +226,7 @@ class ModelWriter:
             clause_plan = next((p for p in self.plans if p["record_id"] == clause["record_id"]), None)
             clause_row = None if clause_plan else self.store.record(clause["record_id"])
             clause_data = clause_plan["data"] if clause_plan else json.loads(clause_row["data_json"])
-            found = []
-            index = clause_data["text"].find(quote)
-            while index >= 0:
-                found.append(index)
-                index = clause_data["text"].find(quote, index + 1)
+            found = quote_positions(clause_data["text"], quote)
             if not found:
                 fail("ANCHOR_NOT_FOUND", path + "/quote", "quote absent from clause")
             occurrence = raw["occurrence"] if "occurrence" in raw else None

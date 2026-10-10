@@ -107,7 +107,7 @@ class StandaloneInstallation(unittest.TestCase):
             vocabulary = work / "vocabulary.json"
             database = work / "contract.sqlite"
             receipt(commands["legal-vocab"], "init", "--vocabulary", vocabulary)
-            receipt(commands["legal-case"], "init", "--db", database, "--vocabulary", vocabulary)
+            installed_case = receipt(commands["legal-case"], "init", "--db", database, "--vocabulary", vocabulary)
             receipt(commands["legal-case"], "query", "--db", database, "--view", "progress")
             self.assertTrue(database.is_file())
 
@@ -119,8 +119,66 @@ class StandaloneInstallation(unittest.TestCase):
             converted = receipt(commands["legal-preprocess"], "--input", original,
                                 "--output-dir", work / "converted", "--converter-config", config)
             self.assertEqual(Path(converted["text"]).read_bytes(), original.read_bytes())
-            receipt(commands["legal-case"], "register", "--db", database, "--original", original,
-                    "--text", converted["text"], "--metadata", converted["metadata"])
+            registered = receipt(commands["legal-case"], "register", "--db", database, "--original", original,
+                                 "--text", converted["text"], "--metadata", converted["metadata"])
+
+            # Helper entries live in the installed skill; the module lives in
+            # its venv. Neither may recover dependencies from removed source.
+            self.assertEqual(set(commands), {"legal-case", "legal-vocab", "legal-preprocess"})
+            helpers = install / "skills/legal-case/scripts"
+            for name in ("find_quote.py", "build_submission.py"):
+                self.assertTrue((helpers / name).is_file())
+                run(runtime["python"], helpers / name, "--help")
+            self.assertTrue((install / "skills/legal-case/references/helper-tools.md").is_file())
+            receipt(commands["legal-case"], "split", "--db", database,
+                    "--text-version", registered["text_version"]["object_id"])
+            clauses = receipt(commands["legal-case"], "query", "--db", database, "--view", "clauses")
+
+            def put(name, obj):
+                file = work / name
+                file.write_text(json.dumps(obj, ensure_ascii=False), encoding="utf-8")
+                return file
+
+            snapshot = put("条款快照 clauses.json", {"case_id": clauses["case_id"],
+                           "checked_sequence": clauses["quality"]["current_sequence"], "items": clauses["items"]})
+            requests = put("引句 requests.json", [{"local_id": "a", "clause_record_id": clauses["items"][0]["record_id"], "quote": "甲方向乙方交付货物。"}])
+            header = put("信封 header.json", {"format_version": 1, "case_id": installed_case["case_id"],
+                         "vocabulary_hash": installed_case["vocabulary_hash"], "submitted_by": "installed-reader",
+                         "phase": "preparation", "covered_clauses": [], "issues": []})
+            records = put("记录 records.json", [{"local_id": "p", "kind": "node", "data": {"node_kind": "subject", "canonical_name": "甲方"},
+                          "evidence": [{"path": "", "source": {"level": 1, "anchors": [{"local_id": "a"}]}}]}])
+            anchors = work / "锚 anchors.json"
+            submission = work / "提交 submission.json"
+            # Test substitutes forbid database/process/network use even when
+            # a helper is launched from a different cwd in the installed venv.
+            guard = (
+                "import builtins,runpy,sqlite3,subprocess,socket,sys; "
+                "deny=lambda *a,**k: (_ for _ in ()).throw(AssertionError('forbidden access')); "
+                "sqlite3.connect=deny; subprocess.Popen=deny; socket.socket=deny; "
+                "original_import=builtins.__import__; "
+                "builtins.__import__=lambda name,*a,**k: deny() if name in "
+                "('legal.storage','legal.model','legal.case_cli') else original_import(name,*a,**k); "
+                "sys.argv=sys.argv[1:]; runpy.run_path(sys.argv[0],run_name='__main__')"
+            )
+            before = database.read_bytes()
+            receipt(runtime["python"], "-c", guard, helpers / "find_quote.py", "--clauses", snapshot, "--input", requests, "--output", anchors)
+            assembled = receipt(runtime["python"], "-c", guard, helpers / "build_submission.py", "--header", header,
+                                "--records", records, "--records", anchors, "--output", submission)
+            self.assertEqual(assembled["scope"], "task_files")
+            self.assertEqual(database.read_bytes(), before)
+            # Failure paths have the same boundary and leave no output.
+            bad_requests = put("无匹配 requests.json", [{"local_id": "b", "clause_record_id": clauses["items"][0]["record_id"], "quote": "不存在的引句"}])
+            for script, arguments in (("find_quote.py", ["--clauses", snapshot, "--input", bad_requests]),
+                                      ("build_submission.py", ["--header", header, "--records", records])):
+                failed_output = work / (script + "-failed.json")
+                failed = subprocess.run([runtime["python"], "-c", guard, str(helpers / script),
+                                         *map(str, arguments), "--output", str(failed_output)], cwd=work, env=env,
+                                        capture_output=True, text=True, timeout=120)
+                self.assertEqual(failed.returncode, 2, failed.stderr + failed.stdout)
+                self.assertFalse(json.loads(failed.stdout)["ok"])
+                self.assertFalse(failed_output.exists())
+                self.assertEqual(database.read_bytes(), before)
+            receipt(commands["legal-case"], "write", "--db", database, "--input", submission)
 
 
 if __name__ == "__main__":
