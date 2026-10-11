@@ -79,6 +79,12 @@ def export_extraction_tasks(db_path, plans, output_dir, resource_root, clause_id
         if not source.is_file():
             fail("FILE_ERROR", str(source), "installed task reference missing")
         files[name] = source.read_bytes()
+    role_inputs = [resources / "skills/legal-case" / name for name in (
+        "templates/extractor.md", "references/helper-tools.md", "examples/quote_requests.py",
+        "examples/extraction.py", "examples/fixture.json")]
+    for source in role_inputs:
+        if not source.is_file():
+            fail("FILE_ERROR", str(source), "installed extractor resource missing")
     for index, plan in enumerate(plans):
         path = f"/tasks/{index}"
         fields(plan, ["task_id", "unit_id", "responsible_clauses", "context_clauses", "group_file", "output_file"], [], path)
@@ -152,7 +158,7 @@ def export_extraction_tasks(db_path, plans, output_dir, resource_root, clause_id
         outputs.add(output)
         task = {"format_version": 1, "task_id": task_id, "unit_id": unit,
                 "responsible_clauses": plan["responsible_clauses"], "context_clauses": plan["context_clauses"],
-                "input_files": [str(destination / name) for name in (*exports, "extraction.md", "data-formats.md", group_name)],
+                "input_files": [str(destination / name) for name in (*exports, "extraction.md", "data-formats.md", group_name)] + [str(source) for source in role_inputs],
                 "output_file": str(output)}
         task_name = f"{task_id}.json"
         if task_name in files:

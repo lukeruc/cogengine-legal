@@ -1,10 +1,10 @@
-# 入库读手辅助脚本
+# 入库角色的文件辅助工具
 
 两个脚本按需用于已有任务，能直接生成正确 JSON 时可以不用。读手决定建模内容、引句、来源和完成声明；主会话调用正式 CLI 写入、接收回执及对账。辅助成功只表示任务文件处理成功。
 
-## 调用与文件位置
+## 主会话交付与角色调用
 
-主会话核验安装的 runtime.json，将其 python 启动路径、已安装脚本绝对路径和输入/输出绝对路径直接写在现有任务说明中。脚本位于本 skill 真实目录的 `scripts/find_quote.py` 和 `scripts/build_submission.py`；共用模块装入同一 .venv。保留环境内 Python 的启动路径，不把其符号链接解析到基础解释器。用参数数组运行，中文与空格路径保持一个参数。
+主会话核验安装的 runtime.json，并直接交付其 python 启动路径、已安装脚本绝对路径和输入/输出绝对路径直接写在现有任务说明中。脚本位于本 skill 真实目录的 `scripts/find_quote.py` 和 `scripts/build_submission.py`；共用模块装入同一 .venv。保留环境内 Python 的启动路径，不把其符号链接解析到基础解释器。用参数数组运行，中文与空格路径保持一个参数。
 
 ```text
 argv = [runtime.python, <已安装 find_quote.py 的绝对路径>,
@@ -73,4 +73,66 @@ recognized_local_references 只涵盖按已知字段语法识别的引用。记�
 
 所有检查结束后才写出，已有目标绝不覆盖；失败不留部分输出，不改输入。读手在当前任务内修正，再次组装使用主会话按既有规则分配的未占用路径。成功入库文件及回执不可改写。修订仍由读手给完整新记录及明确前驱，不从旧记录自动合并、刷新前驱或恢复对象。
 
-脚本不改变权限：分段读手只写笔记，主体和事件仍由归纳读手认定。主会话处理摘要和 issues 的明确问题，每份完整提交调用一次已有 write，随后 reconcile；不增检查 agent、审批或完成状态。
+脚本不改变权限：reader 只写笔记，主体和事件仍由 summarizer 认定。主会话处理摘要和 issues 的明确问题，每份完整提交调用一次已有 write，随后 reconcile；不增检查 agent、审批或完成状态。
+
+## 公开内存 API
+
+用主会话给出的专用 Python 启动路径调用；`from legal.reader_helpers import ...` 正常导入已安装模块即可，不读取实现、不修改 sys.path 或环境。库函数不打印日志、不读库、不联网、不启动进程；只有明确文件函数读写指定文件。每个构造返回独立普通 dict/list，保留输入，返回值与输入不共享可变子结构。
+
+`UNSET` 表示参数缺席，不能存入 JSON。下面可选参数默认 UNSET；显式 None 仍为 null，但不允许 null 的结构字段会报错。来源级、数值、单位、身份、性质、模态、issues 和完成声明均由调用方决定，不猜默认值。
+
+| 函数 | 必需参数与结果 |
+|---|---|
+| `read_json(path)` | 绝对路径，严格 JSON；重复键、BOM、非有限数拒绝，返回原 JSON 数据，不推断用途 |
+| `read_text(path)` | 绝对路径，UTF-8 严格解码原字节；不归一化换行或 Unicode，返回 str |
+| `write_json(path, value)` | 绝对路径，先完整序列化再排他写入，返回路径 str；不创建父目录、不覆盖、不包装提交 |
+| `quote_from_span(snapshot, *, local_id, clause_record_id, start, end)` | 固定完整 snapshot 与条款内 Unicode 码点半开区间，返回 find_quote 请求项，含正确 occurrence |
+| `ref(*, object_id=UNSET, record_id=UNSET, local_id=UNSET, value_path=UNSET)` | 三 ID 恰给一种；value_path 只能配固定版本/local_id，指 /value 或后代；目标类型仍正式检查 |
+| `source(*, level, **fields)` | 显式级别与正式来源字段；校验字段/固定引用/格式参数结构，不代选级别或证明推断 |
+| `evidence(*, path, source)` | 显式 JSON Pointer 与来源，返回 {path,source}；不补根路径、不扩大覆盖 |
+| `record(*, local_id, kind, data, evidence, object_id=UNSET, previous_record_id=UNSET, status=UNSET, withdrawal_reason=UNSET)` | 完整单记录与既有外层检查；缺省 status 保持缺席；修订明确同时给对象和前驱 |
+| `node(*, local_id, node_kind, fields, evidence)` | fields 是其余 data，不能重定义 node_kind；调用 record |
+| `relation(*, local_id, relation_kind, fields, evidence)` | fields 显式给实际 unit/端点等，不能重定义 relation_kind；不补 modality 或性质 |
+| `reference(*, local_id, reference_kind, from_ref, to_ref, fields, evidence)` | fields 仅其余 data，不得重定义 reference_kind/from/to |
+| `detail(*, local_id, owner, slot_id, value, evidence)` | 完整 detail；value 可明确 None，不因漏参补 null |
+| `clause_revision(*, local_id, clause, tags, classification, evidence)` | 完整 active clause 查询记录；复制完整 data，只替换 tags/classification，使用其 object_id/record_id 为对象/前驱；新 evidence 必填 |
+| `header(*, format_version, case_id, vocabulary_hash, submitted_by, phase, covered_clauses, issues, overview=UNSET)` | 必填参数无默认，返回不含 records 的现有信封 |
+| `assemble(*, header, record_groups)` | 一或多份记录 list，按给定顺序合并，与原 build_submission 共用纯检查；返回提交，不写文件、不分配正式 ID |
+
+node/relation/reference/detail 为薄封装，完整内部内容、目标类型、值兼容、来源覆盖和语义由正式 write 独立校验。修正用通用 record 给完整 data/evidence 和明确前驱；gap、no_content 同样用 record。参与者、端点与六种值继续普通字典/列表，不增加专用对象系统。
+
+quote_from_span 要求 `0 <= start < end <= len(clause.text)`，布尔不是整数；在 aaaa 中 [1,3) 返回 aa/occurrence=2。偏移是同一固定条款原文的码点，不是 JSON 物理行、UTF-8 字节或重新排版行号。窗口位置先换算回条款；不自动猜范围，不截句修错。返回引句请求后仍经 find_quote 生成锚，正式 write 重新核验。
+
+clause_revision 不接受 unclassified；ordinary 对应非空 tags，no_content/unmatched 对应空 tags。它不沿用原 evidence、不生成 gap、不判断数据库当前版本、不改变 original_number 的缺席/null。query 的 evidence/provenance 等包装字段不进入 data 或新记录。
+
+write_json 只接受普通 JSON 类型及字符串键；拒绝 NaN/Infinity、Decimal、日期对象、集合、tuple、自定义对象和循环数据，不隐式转成文本。业务十进制由调用方给字符串。缩进及末尾换行是文件排版，不改变字段中的 CR/LF/CRLF、原句和 Unicode。
+
+## 经验证的固定样例与短调用
+
+本 skill 的 examples/quote_requests.py、preparation.py、tagging.py、extraction.py 是可调用的 `build` 样例；fixture.json 使用虚构原文及 UUID，不是本合同数据。主会话交付本角色需要的实际绝对路径，明确调用参数；reader 不必加载无关样例。summarizer 对应 preparation，tagger 对应 tagging，extractor 对应 extraction。样例演示 I、II、III 级的不同处理，不能据样例一律指定来源级。
+
+使用主会话交付的快照选定原句位置、形成请求，例如短调用片段：
+
+```python
+from legal.reader_helpers import read_json, quote_from_span, write_json
+snapshot = read_json(clauses_path)  # 主会话交付的绝对路径
+request = quote_from_span(snapshot, local_id="payment-quote",
+                          clause_record_id=clause_record_id, start=start, end=end)
+write_json(new_requests_path, [request])
+```
+
+随后用既有 find_quote.py 处理 requests，保留完整 stdout、stderr 和原进程退出码。业务 data 可用普通 Python 多行字符串，不手工 JSON 转义；用上表函数及 `assemble`/`write_json` 输出。也可运行交付的样例（例为 tagger，全部参数来自本次任务）：
+
+```python
+import runpy
+from legal.reader_helpers import read_json, write_json
+build = runpy.run_path(tagging_example_path)["build"]
+document = build(snapshot=read_json(clauses_path), anchors=read_json(anchors_path),
+                 unit_id=selected_unit_id, case_id=case_id,
+                 vocabulary_hash=vocabulary_hash, submitted_by=submitted_by)
+write_json(new_submission_path, document)
+```
+
+样例的固定虚构内容仅供格式演示；真实任务自行填本合同业务数据和判断，不能无条件复用样例的单元、来源、完整声明或法律结论。样例运行不要求主动阅读库实现，也不授权读取别的任务。
+
+库失败抛 `legal.formats.Invalid` 或 `InvalidBatch`，含 code/path/message；Invalid 用 `.item()`，InvalidBatch 用 `.items` 获取诊断，不吞异常。参数/范围错误 INVALID_ARGUMENT，快照无版本 REFERENCE_NOT_FOUND，序列化 INVALID_JSON，路径/读写 FILE_ERROR，已存在 FILE_EXISTS；重复/引用/来源沿用既有码。按明确输入错误自行修正；资料缺失、安装故障、说明与程序矛盾交主会话。原两个脚本仍按上述 stdout 和退出码处理。新路径由主会话按原规则分配，不能为了重试覆盖成功产物。

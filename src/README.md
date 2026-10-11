@@ -171,3 +171,9 @@ cwd  = "/absolute/contract-work-directory"
 | 未配置 DOCX/PDF/OCR 转换程序 | 在需要转换时提供符合[预处理说明](references/preprocess-cli.md)的外部程序配置；案件和词表的 JSON/SQLite 操作仍可用。 |
 
 安装与修复只作用于安装根。用户的合同工作目录、全局词表和独立转换器配置是单独资产。
+
+### 角色派发与文件构造
+
+legal-case 随安装复制 `templates/reader.md`、`summarizer.md`、`tagger.md`、`extractor.md`，以及 `examples/` 中四份可调用样例与虚构夹具。主会话按角色原样带入固定内容，填实本次任务要求和路径；读手不需源码或 README 来猜用法。已有安装仍须重新构建 wheel 并以 `--upgrade` 更新，同一版本号也须替换包与配套 skill。
+
+同一专用解释器中的 `legal.reader_helpers` 提供 read_json/read_text/write_json、quote_from_span、ref/source/evidence、record/node/relation/reference/detail、clause_revision、header/assemble。用法和失败处理见 legal-case 的 `references/helper-tools.md`；两个文件脚本参数继续兼容。构造仅处理已交付文件和普通内存数据，法律判断与覆盖声明由相应角色给出，正式写入仍由主会话完成。

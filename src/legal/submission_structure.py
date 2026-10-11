@@ -4,9 +4,69 @@ from __future__ import annotations
 
 import re
 
-from .formats import fields, fail, nonempty, require_object, uuid_value, version
+from .formats import fields, fail, integer, nonempty, require_object, uuid_value, version
+from .values import decimal_value
 
 KINDS = {"clause", "anchor", "node", "relation", "detail", "reference", "gap", "no_content"}
+
+
+def validate_source_structure(source, path="/source"):
+    """Check source shape only; targets, support and round trips need write."""
+    require_object(source, path)
+    level = source.get("level")
+    if type(level) is not int or level not in (1, 2, 3):
+        fail("INVALID_ARGUMENT", path + "/level", "source level must be 1, 2 or 3")
+    required = {1: ["level", "anchors"],
+                2: ["level", "anchors", "surface", "format_contract", "format_parameters"],
+                3: ["level", "premises", "explanation", "asserted_by"]}[level]
+    fields(source, required, [], path)
+    key = "premises" if level == 3 else "anchors"
+    if not isinstance(source[key], list) or not source[key]:
+        fail("MISSING_SOURCE", path + "/" + key, "expected non-empty fixed references")
+    for i, ref in enumerate(source[key]):
+        at = f"{path}/{key}/{i}"
+        fields(ref, [], ["record_id", "local_id"], at)
+        validate_reference_shape(ref, at)
+    if level == 3:
+        for key in ("explanation", "asserted_by"):
+            nonempty(source[key], path + "/" + key)
+    elif level == 2:
+        nonempty(source["surface"], path + "/surface")
+        contract = source["format_contract"]
+        if not isinstance(contract, str) or contract not in {"decimal.v1", "date.v1"}:
+            fail("UNKNOWN_FORMAT_CONTRACT", path + "/format_contract")
+        names = (["decimal_places", "group_separator", "decimal_separator", "sign_style", "scale",
+                  "unit_surface", "unit_position", "prefix", "suffix", "number_unit_separator"]
+                 if contract == "decimal.v1" else ["precision", "component_widths", "separators", "prefix", "suffix"])
+        params_path = path + "/format_parameters"
+        params = fields(source["format_parameters"], names, [], params_path)
+        for key in names:
+            value = params[key]
+            expected = int if key == "decimal_places" else list if key in {"component_widths", "separators"} else str
+            if type(value) is not expected:
+                fail("INVALID_ARGUMENT", params_path + "/" + key, "invalid format parameter type")
+        if contract == "decimal.v1":
+            integer(params["decimal_places"], params_path + "/decimal_places", 0)
+            decimal_value(params["scale"], params_path + "/scale", positive=True)
+            if (params["group_separator"] not in {"", ",", " ", "，"} or
+                    params["decimal_separator"] not in {".", ","} or
+                    params["group_separator"] and params["group_separator"] == params["decimal_separator"] or
+                    params["sign_style"] not in {"minus", "plus", "none"} or
+                    params["unit_position"] not in {"before", "after"}):
+                fail("INVALID_ARGUMENT", params_path, "invalid decimal format parameters")
+            literals = ("unit_surface", "prefix", "suffix", "number_unit_separator")
+        else:
+            count = {"year": 1, "month": 2, "day": 3}.get(params["precision"])
+            widths, separators = params["component_widths"], params["separators"]
+            if (count is None or len(widths) != count or len(separators) != count - 1 or
+                    type(widths[0]) is not int or widths[0] != 4 or
+                    any(type(w) is not int or w not in (1, 2) for w in widths[1:]) or
+                    any(not isinstance(s, str) or re.search(r"[0-9]", s) for s in separators)):
+                fail("INVALID_ARGUMENT", params_path, "invalid date format parameters")
+            literals = ("prefix", "suffix")
+        for key in literals:
+            if re.search(r"[0-9]", params[key]):
+                fail("INVALID_ARGUMENT", params_path + "/" + key, "format literals cannot contain digits")
 
 
 def validate_reference_shape(ref, path):

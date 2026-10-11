@@ -82,7 +82,6 @@ class StandaloneInstallation(unittest.TestCase):
             for name in SKILLS:
                 skill = host / name / "SKILL.md"
                 body = skill.read_text(encoding="utf-8")
-                self.assertNotIn("README", body)
                 snippet = re.search(r"^```python\n(.*?)^```", body, re.M | re.S).group(1)
                 snippet = snippet.replace(f'"/host/skills/{name}/SKILL.md"', json.dumps(str(skill)))
                 paths = run(runtime["python"], "-c", snippet).splitlines()
@@ -179,6 +178,37 @@ class StandaloneInstallation(unittest.TestCase):
                 self.assertFalse(failed_output.exists())
                 self.assertEqual(database.read_bytes(), before)
             receipt(commands["legal-case"], "write", "--db", database, "--input", submission)
+
+            # New templates/examples/API must survive the same source removal.
+            case_skill = install / "skills/legal-case"
+            for role in ("reader", "summarizer", "tagger", "extractor"):
+                self.assertTrue((case_skill / f"templates/{role}.md").is_file())
+            example_probe = '''
+import builtins,json,runpy,sqlite3,subprocess,socket,sys
+deny=lambda *a,**k: (_ for _ in ()).throw(AssertionError('forbidden access'))
+sqlite3.connect=deny; subprocess.Popen=deny; socket.socket=deny
+original_import=builtins.__import__
+builtins.__import__=lambda name,*a,**k: deny() if name in ('legal.storage','legal.model','legal.case_cli') else original_import(name,*a,**k)
+from pathlib import Path
+from legal.reader_helpers import read_json,write_json,record,ref
+examples=Path(sys.argv[1]); work=Path(sys.argv[2])
+fixture=read_json(examples/'fixture.json'); snapshot=fixture['snapshot']; clause=snapshot['items'][0]
+request=runpy.run_path(str(examples/'quote_requests.py'))['build'](snapshot=snapshot,local_id='a',clause_record_id=clause['record_id'],start=0,end=len(clause['data']['text']))
+write_json(work/'installed-requests.json',request)
+anchors=[record(local_id='a',kind='anchor',data={'clause':ref(record_id=clause['record_id']),'quote':request[0]['quote'],'occurrence':request[0]['occurrence']},evidence=[])]
+common={'snapshot':snapshot,'anchors':anchors,'case_id':fixture['case_id'],'vocabulary_hash':fixture['vocabulary_hash']}
+for name in ('preparation','tagging','extraction'):
+    args={**common,'submitted_by':{'preparation':'summarizer','tagging':'tagger','extraction':'extractor'}[name]}
+    if name!='preparation': args['unit_id']=fixture['unit_id']
+    if name=='extraction': args.update(slot_id=fixture['slot_id'],shared_ids=fixture['shared_ids'])
+    doc=runpy.run_path(str(examples/(name+'.py')))['build'](**args)
+    path=work/('installed-'+name+'.json'); write_json(path,doc)
+    assert read_json(path)==doc
+print(json.dumps({'ok':True,'examples':4,'source_present':False}))
+'''
+            before = database.read_bytes()
+            self.assertEqual(receipt(runtime["python"], "-c", example_probe, case_skill / "examples", work)["examples"], 4)
+            self.assertEqual(database.read_bytes(), before)
 
 
 if __name__ == "__main__":

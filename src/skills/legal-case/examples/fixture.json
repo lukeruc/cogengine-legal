@@ -1,0 +1,37 @@
+{
+  "case_id": "00000001-1111-4111-8111-111111111111",
+  "vocabulary_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "unit_id": "00000002-1111-4111-8111-111111111111",
+  "slot_id": "00000003-1111-4111-8111-111111111111",
+  "shared_ids": {
+    "p": "00000004-1111-4111-8111-111111111111",
+    "q": "00000005-1111-4111-8111-111111111111",
+    "delivery": "00000006-1111-4111-8111-111111111111",
+    "condition_slot": "00000007-1111-4111-8111-111111111111"
+  },
+  "snapshot": {
+    "case_id": "00000001-1111-4111-8111-111111111111",
+    "checked_sequence": 3,
+    "items": [
+      {
+        "object_id": "00000008-1111-4111-8111-111111111111",
+        "record_id": "00000009-1111-4111-8111-111111111111",
+        "kind": "clause",
+        "status": "active",
+        "data": {
+          "text_version": {
+            "object_id": "00000010-1111-4111-8111-111111111111"
+          },
+          "sequence": 1,
+          "text": "第一条 甲方为采购人，乙方为供应商。\r\n乙方交付货物后，甲方应向乙方支付100元。\r\n示例标识：\"\\😀é\"。\r\n",
+          "start_offset": 0,
+          "end_offset": 57,
+          "tags": [],
+          "classification": "unclassified"
+        },
+        "evidence": [],
+        "provenance": {}
+      }
+    ]
+  }
+}

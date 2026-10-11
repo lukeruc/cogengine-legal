@@ -4,23 +4,196 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
+import re
 from pathlib import Path
 import sys
 
-from .formats import (Invalid, canonical, exclusive_write, fail, fields, integer,
+from .formats import (Invalid, InvalidBatch, canonical, exclusive_write, fail, fields, integer,
                       loads, nonempty, pointer_escape, quote_positions, uuid_value)
 from .submission_structure import (validate_envelope, validate_record_envelope,
-                                   validate_reference_shape)
+                                   validate_reference_shape, validate_source_structure)
 
 CHECKED = ["json", "envelope", "record_envelopes", "batch_ids", "recognized_local_references"]
 DEFERRED = ["record_content", "vocabulary_and_values", "database_state",
             "reference_targets", "evidence", "coverage", "legal_meaning"]
 
+UNSET = object()
 
-class FileChecksFailed(Exception):
+
+def _copy_json(value):
+    try:
+        return _copy_json_inner(value)
+    except RecursionError:
+        fail("INVALID_JSON", "", "JSON nesting exceeds interpreter limit")
+
+
+def _copy_json_inner(value, path="", stack=None):
+    """Copy only ordinary JSON data, without implicit conversions or aliases."""
+    stack = set() if stack is None else stack
+    if type(value) in (str, int, bool) or value is None:
+        if isinstance(value, str):
+            try:
+                value.encode("utf-8")
+            except UnicodeError as exc:
+                fail("INVALID_JSON", path, str(exc))
+        return value
+    if type(value) is float:
+        if not math.isfinite(value):
+            fail("INVALID_JSON", path, "non-finite number")
+        return value
+    if type(value) not in (dict, list):
+        fail("INVALID_JSON", path, "expected ordinary JSON data")
+    if id(value) in stack:
+        fail("INVALID_JSON", path, "cyclic data")
+    stack.add(id(value))
+    try:
+        if type(value) is list:
+            return [_copy_json_inner(item, f"{path}/{i}", stack) for i, item in enumerate(value)]
+        result = {}
+        for key, item in value.items():
+            if type(key) is not str:
+                fail("INVALID_JSON", path, "JSON keys must be strings")
+            _copy_json_inner(key, path, stack)
+            result[key] = _copy_json_inner(item, path + "/" + pointer_escape(key), stack)
+        return result
+    finally:
+        stack.remove(id(value))
+
+
+def read_json(path):
+    return _read(_absolute(path, "/path"))
+
+
+def read_text(path):
+    path = _absolute(path, "/path")
+    try:
+        return path.read_bytes().decode("utf-8", errors="strict")
+    except (OSError, UnicodeError) as exc:
+        fail("FILE_ERROR", str(path), str(exc))
+
+
+def write_json(path, value):
+    path = _absolute(path, "/path")
+    document = _copy_json(value)
+    try:
+        data = (json.dumps(document, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
+    except (ValueError, TypeError, UnicodeError, RecursionError) as exc:
+        fail("INVALID_JSON", "", str(exc))
+    exclusive_write(path, data)
+    return str(path)
+
+
+def quote_from_span(snapshot, *, local_id, clause_record_id, start, end):
+    clauses = _snapshot(snapshot)
+    nonempty(local_id, "/local_id")
+    uuid_value(clause_record_id, "/clause_record_id")
+    if clause_record_id not in clauses:
+        fail("REFERENCE_NOT_FOUND", "/clause_record_id", "clause version absent from snapshot")
+    text = clauses[clause_record_id]["data"]["text"]
+    integer(start, "/start", 0)
+    integer(end, "/end", 0)
+    if not start < end <= len(text):
+        fail("INVALID_ARGUMENT", "/end", "expected 0 <= start < end <= len(text)")
+    quote = text[start:end]
+    return {"local_id": local_id, "clause_record_id": clause_record_id, "quote": quote,
+            "occurrence": quote_positions(text, quote).index(start) + 1}
+
+
+def ref(*, object_id=UNSET, record_id=UNSET, local_id=UNSET, value_path=UNSET):
+    result = {key: value for key, value in locals().items() if value is not UNSET}
+    validate_reference_shape(result, "")
+    return _copy_json(result)
+
+
+def source(*, level, **fields):
+    result = _copy_json({"level": level, **fields})
+    validate_source_structure(result)
+    return result
+
+
+def evidence(*, path, source):
+    if not isinstance(path, str) or (path != "" and not path.startswith("/")) or re.search(r"~(?![01])", path):
+        fail("INVALID_ARGUMENT", "/path", "invalid JSON Pointer")
+    validate_source_structure(source)
+    return _copy_json({"path": path, "source": source})
+
+
+def record(*, local_id, kind, data, evidence, object_id=UNSET, previous_record_id=UNSET,
+           status=UNSET, withdrawal_reason=UNSET):
+    result = _copy_json({key: value for key, value in locals().items() if value is not UNSET})
+    validate_record_envelope(result, "")
+    return result
+
+
+def _typed_fields(fields, fixed):
+    if not isinstance(fields, dict):
+        fail("INVALID_ARGUMENT", "/fields", "expected object")
+    for key in fixed:
+        if key in fields:
+            fail("INVALID_ARGUMENT", "/fields/" + key, "fixed field cannot be redefined")
+    return {**fixed, **fields}
+
+
+def node(*, local_id, node_kind, fields, evidence):
+    return record(local_id=local_id, kind="node", data=_typed_fields(fields, {"node_kind": node_kind}), evidence=evidence)
+
+
+def relation(*, local_id, relation_kind, fields, evidence):
+    return record(local_id=local_id, kind="relation", data=_typed_fields(fields, {"relation_kind": relation_kind}), evidence=evidence)
+
+
+def reference(*, local_id, reference_kind, from_ref, to_ref, fields, evidence):
+    return record(local_id=local_id, kind="reference", data=_typed_fields(fields, {
+        "reference_kind": reference_kind, "from": from_ref, "to": to_ref}), evidence=evidence)
+
+
+def detail(*, local_id, owner, slot_id, value, evidence):
+    return record(local_id=local_id, kind="detail", data={"owner": owner, "slot_id": slot_id, "value": value}, evidence=evidence)
+
+
+def clause_revision(*, local_id, clause, tags, classification, evidence):
+    if not isinstance(clause, dict) or clause.get("kind") != "clause" or clause.get("status") != "active":
+        fail("INVALID_ARGUMENT", "/clause", "expected active complete clause query record")
+    for key in ("object_id", "record_id"):
+        uuid_value(clause.get(key), "/clause/" + key)
+    data = fields(clause.get("data"), ["text_version", "sequence", "text", "start_offset", "end_offset", "tags", "classification"], ["original_number"], "/clause/data")
+    _snapshot({"case_id": clause["object_id"], "checked_sequence": 0, "items": [clause]})
+    integer(data["sequence"], "/clause/data/sequence", 1)
+    if "original_number" in data and data["original_number"] is not None and not isinstance(data["original_number"], str):
+        fail("INVALID_ARGUMENT", "/clause/data/original_number")
+    if not isinstance(tags, list):
+        fail("INVALID_ARGUMENT", "/tags", "expected array")
+    for i, tag in enumerate(tags):
+        uuid_value(tag, f"/tags/{i}")
+    if len(set(tags)) != len(tags):
+        fail("DUPLICATE_ID", "/tags", "duplicate tag")
+    if not isinstance(classification, str) or classification not in {"ordinary", "no_content", "unmatched"} or (classification == "ordinary") != bool(tags):
+        fail("INVALID_ARGUMENT", "/classification", "classification and tags differ")
+    return record(local_id=local_id, kind="clause", data={**data, "tags": tags, "classification": classification},
+                  evidence=evidence, object_id=clause["object_id"], previous_record_id=clause["record_id"])
+
+
+def header(*, format_version, case_id, vocabulary_hash, submitted_by, phase, covered_clauses, issues, overview=UNSET):
+    result = _copy_json({key: value for key, value in locals().items() if value is not UNSET})
+    validate_envelope({**result, "records": []})
+    return result
+
+
+def assemble(*, header, record_groups):
+    header = _copy_json(header)
+    groups = _copy_json(record_groups)
+    if not isinstance(groups, list) or not groups or any(not isinstance(group, list) for group in groups):
+        fail("INVALID_ARGUMENT", "/record_groups", "expected one or more record arrays")
+    return _assemble(header, groups)
+
+
+class FileChecksFailed(InvalidBatch):
     def __init__(self, errors):
         self.errors = errors
+        self.items = errors
+        Exception.__init__(self, f"{len(errors)} validation errors")
 
 
 class Diagnostics:
@@ -47,14 +220,22 @@ def _read(path):
     except Invalid as exc:
         exc.details["file"] = str(path)
         raise
+    except RecursionError:
+        fail("INVALID_JSON", "", "JSON nesting exceeds interpreter limit", file=str(path))
     except OSError as exc:
         fail("FILE_ERROR", "", str(exc), file=str(path))
 
 
 def _absolute(path, argument):
-    if not Path(path).is_absolute():
+    try:
+        result = Path(path)
+    except (TypeError, ValueError) as exc:
+        fail("INVALID_ARGUMENT", argument, str(exc))
+    if not result.is_absolute():
         fail("INVALID_ARGUMENT", argument, "file path must be absolute")
-    return Path(path)
+    if "\x00" in str(result):
+        fail("FILE_ERROR", argument, "file path contains a null character")
+    return result
 
 
 def _publish(output, document):
@@ -280,6 +461,17 @@ def build_submission_files(header_file, records_files, output_file):
             checks.check(fail, "INVALID_ARGUMENT", "", "records file must contain an array", file=path)
         arrays.append(array)
     checks.finish()
+    document = _assemble(header, arrays, header_file, paths)
+    _publish(output_file, document)
+    return {"ok": True, "scope": "task_files", "output_file": str(output_file), "record_count": len(document["records"]),
+            "checked": CHECKED.copy(), "deferred_checks": DEFERRED.copy()}
+
+
+def _assemble(header, arrays, header_file=None, paths=None):
+    """One pure check implementation for memory and file interfaces."""
+    checks = Diagnostics()
+    memory = paths is None
+    paths = [f"/record_groups/{i}" for i in range(len(arrays))] if memory else paths
     # The header cannot smuggle in or overwrite records, even an empty array.
     checks.check(fields, header, ["format_version", "case_id", "vocabulary_hash", "submitted_by", "phase", "covered_clauses", "issues"], ["overview"], "", file=header_file)
     checks.finish()
@@ -315,10 +507,12 @@ def build_submission_files(header_file, records_files, output_file):
     order = {str(file): i for i, file in enumerate([header_file, *paths])}
     checks.errors.sort(key=lambda item: (order.get(item.get("file"), -1),
                                        int(item["path"].split("/")[1]) if item["path"].startswith("/") and item["path"].split("/")[1].isdigit() else -1))
+    if memory:
+        for item in checks.errors:
+            if "file" in item:
+                item["path"] = item.pop("file") + item["path"]
     checks.finish()
-    _publish(output_file, document)
-    return {"ok": True, "scope": "task_files", "output_file": str(output_file), "record_count": len(records),
-            "checked": CHECKED.copy(), "deferred_checks": DEFERRED.copy()}
+    return document
 
 
 class _Parser(argparse.ArgumentParser):

@@ -20,7 +20,7 @@ result = export_initial_reading_tasks(
 示例的 contract_dir、install_root 是调用方实际绝对路径的 pathlib.Path；使用安装信息中共用解释器，不混用旧代码和新说明。原七个案件 CLI 命令不变。
 
 - output_dir 是合同 tasks 下按现有序号分配的新/空子目录，不覆盖产物。
-- preparation_file 是 submissions 下分配的新文件；归纳读手写 JSON，主会话调用现有 write。
+- preparation_file 是 submissions 下分配的新文件；summarizer 写 JSON，主会话调用现有 write。
 - text_version_ids 省略时主读全部当前素材；增量时指定新增素材的当前文本对象 ID 集合，其他当前全文仍提供回读入口。不接受旧版本或半条款主读范围。
 - target_chars 默认为 20,000 Unicode 字符，含标题、表格、空白；独立超长条款不拆任务。
 - window_chars 默认为 6,000，按宿主单次输出能力调整，与任务目标独立。字符数不是 token 数，实际截断仍要补读。
@@ -57,7 +57,7 @@ task = export_initial_synthesis_task(
 )
 ```
 
-归纳任务用 manifest 同目录下新的 JSON 文件。辅助检查当前素材/文本/条款版本和原文快照、笔记存在且非空，重新导出最新概要/正式事件/共用对象/词表到对应 *-shared.json，给一个归纳读手。单段的 continue_reader_task_id 指向原读手，不能另开 agent；单段也可以直接继续原任务，提交前查询最新共用身份。
+归纳任务用 manifest 同目录下新的 JSON 文件。辅助检查当前素材/文本/条款版本和原文快照、笔记存在且非空，重新导出最新概要/正式事件/共用对象/词表到对应 *-shared.json，给一个 summarizer。单段的 continue_reader_task_id 指向原读手，不能另开 agent；单段也可以直接继续原任务，提交前查询最新共用身份。
 
 归纳给唯一 preparation 输出和 covered_clauses=[]。已存在准备文件时先查库/回执判断重放或修正，不覆盖成新一套对象。辅助不解析笔记为业务 schema，不证明实际已读、问题解决或语义准确。
 
@@ -66,3 +66,5 @@ task = export_initial_synthesis_task(
 `check_reading_versions(db_path, manifest_file)` 核对当前素材/文本/条款版本及导出原文，返回当前序号与新增文本 ID。无关提交改变序号不自动否定有效笔记；受影响版本改变则重定阅读依据，新素材另行主读，旧共同条件按问题回读。
 
 它不返回读完或语义通过；复用前仍检查笔记实际已读/未读。共用记录变化时归纳使用新完整查询，成功准备的正式身份和进度以数据库为准。
+
+导出材料附带同版 reader 模板，归纳 input_files 附带 summarizer 模板、helper-tools、引句/preparation 样例、虚构夹具及完整 clauses 快照。角色显示名按模板使用；已有 task_id/role 字段不迁移。主会话原样带入固定正文并填实第二部分，保存实际派发；单段在原 reader 会话继续 summarizer，不因名称另开会话。资料导出不是子任务权限，也不自动生成法律判断。
