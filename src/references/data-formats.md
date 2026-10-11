@@ -21,7 +21,7 @@ id、origin_unit_id、replaces成员使用规范UUID；origin/replaces可指历�
 某单元的适用槽 = 显式归属该单元的槽 ∪ 通用槽
 ```
 
-完全没有assignment的槽适用于全部单元；已归属其他单元、但未归属当前单元的槽不因此成为通用槽。detail的适用范围取决于owner关系的unit_id，不取决于读手任务的unit_id。可用槽不是必填槽：只有原文有对应规定才填写，无依据时不补值、不制造null；查询的missing_slots只表示适用但未填，也不等于应创建missing_slot缺口。
+完全没有assignment的槽适用于全部单元；已归属其他单元、但未归属当前单元的槽不因此成为通用槽。detail的适用范围取决于owner关系的unit_id，不取决于 extractor 任务的unit_id。可用槽不是必填槽：只有原文有对应规定才填写，无依据时不补值、不制造null；查询的missing_slots只表示适用但未填，也不等于应创建missing_slot缺口。
 
 正例：若快照的“时点或期间”槽无任何归属，通知关系可用它表达原文的通知期限；relative仍须给准确的既有事件引用。不能以“没有分配给通知单元”为由报该槽不可用。
 
@@ -86,7 +86,7 @@ id、origin_unit_id、replaces成员使用规范UUID；origin/replaces可指历�
 
 非 extraction 的 covered_clauses 必须为空。extraction 必须至少声明一个负责条款；correction 可修正相同业务对象，但不会凭此新增提取完成记录。preparation 可仅更新概要，不伪造事件。CLI 不验证提交者字符串是否真是指定 agent；事件的认定权属于 skill 的职责约束，验收须检查任务交接。
 
-初读分段任务及 Markdown 笔记是 tasks 中的工作文件，不是本交换格式的写入记录，不逐份 write；主读范围不声明 extraction 完成。一个 summarizer（单段由原读手兼任）形成一份 preparation，主体/事件同一性按原文统一判断，笔记与概要不能充当正式断言来源前提。执行与导出规则见 [preparation.md](../skills/legal-case/references/preparation.md) 和 [reading-inputs.md](../skills/legal-case/references/reading-inputs.md)。
+初读分段任务及 Markdown 笔记是 tasks 中的工作文件，不是本交换格式的写入记录，不逐份 write；主读范围不声明 extraction 完成。一个 summarizer（单段由原 reader 兼任）形成一份 preparation，主体/事件同一性按原文统一判断，笔记与概要不能充当正式断言来源前提。执行与导出规则见 [preparation.md](../skills/legal-case/references/preparation.md) 和 [reading-inputs.md](../skills/legal-case/references/reading-inputs.md)。
 
 ### 3.2 单记录
 

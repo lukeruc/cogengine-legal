@@ -37,15 +37,15 @@ result = export_initial_reading_tasks(
 | texts/*.txt / clauses/*.txt | 逐字全文/条款原文，供定位回读 |
 | windows/*.txt | 无管理字段的连续原文窗口，任务附条款内及全文 Unicode 半开区间 |
 | 0001-reading.json / 0001-reading.md 等 | 分段任务和管理标题/窗口顺序，含上级标题上下文入口 |
-| 0001-notes.md 等 | 读手的独立输出路径；导出不预填已读笔记 |
+| 0001-notes.md 等 | reader 的独立输出路径；导出不预填已读笔记 |
 
-任务是工作文件：main_reading_clauses 是对象/记录 ID 对；windows 列连续窗口；context_clauses 是阅读上下文；input_files 给明确输入位置。role=segment_reading 只产 Markdown 笔记，不分配事件 ID；只有一段时 role=reading_and_synthesis，附 preparation_file，由同一读手继续归纳。
+任务是工作文件：main_reading_clauses 是对象/记录 ID 对；windows 列连续窗口；context_clauses 是阅读上下文；input_files 给明确输入位置。role=segment_reading 只产 Markdown 笔记，不分配事件 ID；只有一段时 role=reading_and_synthesis，附 preparation_file，由同一 reader 继续归纳。
 
-说明和数据格式引用核验存在的安装绝对路径，保留安装内依赖关系，不复制出失效相对链接。派发前检查路径，读手顺序全读窗口，截断补读。
+说明和数据格式引用核验存在的安装绝对路径，保留安装内依赖关系，不复制出失效相对链接。派发前检查路径，reader 顺序全读窗口，截断补读。
 
 ## 收齐后形成归纳任务
 
-先检查读手回报的实际已读/未读/截断/问题范围，补齐受阻任务再收全部笔记。文件存在不等于读完。
+先检查 reader 回报的实际已读/未读/截断/问题范围，补齐受阻任务再收全部笔记。文件存在不等于读完。
 
 ```python
 from legal.initial_reading import export_initial_synthesis_task
@@ -57,7 +57,7 @@ task = export_initial_synthesis_task(
 )
 ```
 
-归纳任务用 manifest 同目录下新的 JSON 文件。辅助检查当前素材/文本/条款版本和原文快照、笔记存在且非空，重新导出最新概要/正式事件/共用对象/词表到对应 *-shared.json，给一个 summarizer。单段的 continue_reader_task_id 指向原读手，不能另开 agent；单段也可以直接继续原任务，提交前查询最新共用身份。
+归纳任务用 manifest 同目录下新的 JSON 文件。辅助检查当前素材/文本/条款版本和原文快照、笔记存在且非空，重新导出最新概要/正式事件/共用对象/词表到对应 *-shared.json，给一个 summarizer。单段的 continue_reader_task_id 指向原 reader，不能另开 agent；单段也可以直接继续原任务，提交前查询最新共用身份。
 
 归纳给唯一 preparation 输出和 covered_clauses=[]。已存在准备文件时先查库/回执判断重放或修正，不覆盖成新一套对象。辅助不解析笔记为业务 schema，不证明实际已读、问题解决或语义准确。
 

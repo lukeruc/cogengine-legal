@@ -1,6 +1,6 @@
 # 入库角色的文件辅助工具
 
-两个脚本按需用于已有任务，能直接生成正确 JSON 时可以不用。读手决定建模内容、引句、来源和完成声明；主会话调用正式 CLI 写入、接收回执及对账。辅助成功只表示任务文件处理成功。
+两个脚本按需用于已有任务，能直接生成正确 JSON 时可以不用。sub-agent 决定建模内容、引句、来源和完成声明；主会话调用正式 CLI 写入、接收回执及对账。辅助成功只表示任务文件处理成功。
 
 ## 主会话交付与角色调用
 
@@ -17,7 +17,7 @@ argv = [runtime.python, <已安装 build_submission.py 的绝对路径>,
         "--output", <任务分配的完整提交绝对路径>]
 ```
 
-信封、引句请求和记录数组放在分配的合同 tasks 子目录；完整提交放指定 submissions 文件。脚本不分配目录、不创建父目录、不改变 cwd。读手无需搜索 runtime、README 或源码，不设置 sys.path、PYTHONPATH 或改用 PATH 中另一套程序；安装依赖缺失交回主会话。
+信封、引句请求和记录数组放在分配的合同 tasks 子目录；完整提交放指定 submissions 文件。脚本不分配目录、不创建父目录、不改变 cwd。sub-agent 无需搜索 runtime、README 或源码，不设置 sys.path、PYTHONPATH 或改用 PATH 中另一套程序；安装依赖缺失交回主会话。
 
 脚本只读显式文件，不接受 --db，不访问 SQLite、正式 CLI、外部进程或网络。需补充原文、正式 ID 或版本时由主会话交付。这个文件约定不是操作系统权限隔离。
 
@@ -53,7 +53,7 @@ argv = [runtime.python, <已安装 build_submission.py 的绝对路径>,
 
 ## build_submission.py：组装与基础检查
 
---header 恰含既有 write 信封去掉 records 后的字段：format_version、case_id、vocabulary_hash、submitted_by、phase、covered_clauses、issues；仅 preparation 可有 overview。身份信息来自主会话，覆盖声明、issues 和概要由读手明确填写；不能省略让脚本补默认值。phase 支持 preparation/tagging/extraction/correction；非 extraction 覆盖声明为空，extraction 至少声明一个条款。
+--header 恰含既有 write 信封去掉 records 后的字段：format_version、case_id、vocabulary_hash、submitted_by、phase、covered_clauses、issues；仅 preparation 可有 overview。身份信息来自主会话，覆盖声明、issues 和概要由 sub-agent 明确填写；不能省略让脚本补默认值。phase 支持 preparation/tagging/extraction/correction；非 extraction 覆盖声明为空，extraction 至少声明一个条款。
 
 --records 至少一次；每个文件为完整标准单记录数组，字段见交付的 data-formats。按参数顺序拼接，保持各数组内部顺序，不排序、不去重。规范化到同一路径的重复文件被拒绝。批内前向 local_id 引用允许，不生成正式 ID，不改变 object_id/previous_record_id。
 
@@ -71,7 +71,7 @@ recognized_local_references 只涵盖按已知字段语法识别的引用。记�
 
 正常 stdout 为一个 JSON 对象。成功共有 ok:true、scope:"task_files"、output_file、record_count。失败为 ok:false、errors:[{code,path,message,...}]、errors_truncated，可含 file；按输入文件及数组顺序排列，最多返回 100 项。stderr 仅作诊断。退出码 0 为文件操作成功，2 为参数/格式/基础检查失败，3 为文件读写失败或 FILE_EXISTS。--help 为文本、退出 0、不读输入；未知参数、单值参数重复均为 INVALID_ARGUMENT，仅 --records 可重复。
 
-所有检查结束后才写出，已有目标绝不覆盖；失败不留部分输出，不改输入。读手在当前任务内修正，再次组装使用主会话按既有规则分配的未占用路径。成功入库文件及回执不可改写。修订仍由读手给完整新记录及明确前驱，不从旧记录自动合并、刷新前驱或恢复对象。
+所有检查结束后才写出，已有目标绝不覆盖；失败不留部分输出，不改输入。sub-agent 在当前任务内修正，再次组装使用主会话按既有规则分配的未占用路径。成功入库文件及回执不可改写。修订仍由 sub-agent 给完整新记录及明确前驱，不从旧记录自动合并、刷新前驱或恢复对象。
 
 脚本不改变权限：reader 只写笔记，主体和事件仍由 summarizer 认定。主会话处理摘要和 issues 的明确问题，每份完整提交调用一次已有 write，随后 reconcile；不增检查 agent、审批或完成状态。
 

@@ -29,7 +29,7 @@ print(install_root / "references")
 
 ## 步骤
 
-1. 核实原件、输出目录及配置路径。需大量阅读转换质量时可将材料交读手，记录异常。
+1. 核实原件、输出目录及配置路径。需大量阅读转换质量时可将材料交 reader，记录异常。
 2. 从安装信息中取 `commands["legal-preprocess"]` 的绝对路径，按参数数组运行 `--input FILE --output-dir DIR --converter-config FILE`。合同入库时进程工作目录为合同工作目录，独立预处理时为调用方指定目录。
 3. 读取 stdout 的 JSON 回执，核对绝对路径、原件哈希、文本哈希和异常；把完整回执交给案件或初始化 skill。
 
