@@ -1,4 +1,4 @@
-"""Uniform adapter for explicitly configured document converters."""
+"""Receive UTF-8 text or invoke an explicitly configured document converter."""
 
 from __future__ import annotations
 
@@ -9,8 +9,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-from .formats import (digest, fail, fields, file_bytes,
-                      file_text, read_json, version, nonempty)
+from . import __version__
+from .formats import (Invalid, InvalidBatch, digest, fail, fields, file_bytes,
+                      read_json, version, nonempty)
 
 
 def _validate_metadata(metadata, text):
@@ -32,101 +33,139 @@ def _validate_metadata(metadata, text):
                 fail("CONVERTER_OUTPUT_INVALID", path, "invalid anomaly interval")
 
 
-def convert(input_path, output_dir, converter_config):
+def convert(input_path, output_dir, converter_config=None):
     original = Path(input_path).absolute()
     target = Path(output_dir).absolute()
-    config_file = Path(converter_config).absolute()
     if not original.is_file():
         fail("FILE_ERROR", "/arguments/input", "original is not a regular file")
     if target.exists() and (not target.is_dir() or any(target.iterdir())):
         fail("FILE_EXISTS", "/arguments/output-dir", "output directory is not empty")
-    config = read_json(config_file)
-    fields(config, ["format_version", "argv"], [], "/converter_config")
-    version(config["format_version"], "/converter_config/format_version")
-    argv = config["argv"]
-    if not isinstance(argv, list) or len(argv) < 3:
-        fail("INVALID_ARGUMENT", "/converter_config/argv", "expected executable and two placeholders")
-    for i, item in enumerate(argv):
-        nonempty(item, f"/converter_config/argv/{i}")
-    executable = Path(argv[0])
-    if not executable.is_absolute() or not executable.is_file():
-        fail("INVALID_ARGUMENT", "/converter_config/argv/0", "executable must be an existing absolute path")
-    if argv.count("{input}") != 1 or argv.count("{output_dir}") != 1:
-        fail("INVALID_ARGUMENT", "/converter_config/argv", "each placeholder required exactly once")
-    if any("{" in part or "}" in part for part in argv if part not in {"{input}", "{output_dir}"}):
-        fail("INVALID_ARGUMENT", "/converter_config/argv", "unsupported placeholder")
-    original_hash = digest(file_bytes(original))
+    config_file = None
+    if converter_config is not None:
+        config_file = Path(converter_config).absolute()
+        config = read_json(config_file)
+        fields(config, ["format_version", "argv"], [], "/converter_config")
+        version(config["format_version"], "/converter_config/format_version")
+        argv = config["argv"]
+        if not isinstance(argv, list) or len(argv) < 3:
+            fail("INVALID_ARGUMENT", "/converter_config/argv", "expected executable and two placeholders")
+        for i, item in enumerate(argv):
+            nonempty(item, f"/converter_config/argv/{i}")
+        executable = Path(argv[0])
+        if not executable.is_absolute() or not executable.is_file():
+            fail("INVALID_ARGUMENT", "/converter_config/argv/0", "executable must be an existing absolute path")
+        if argv.count("{input}") != 1 or argv.count("{output_dir}") != 1:
+            fail("INVALID_ARGUMENT", "/converter_config/argv", "each placeholder required exactly once")
+        if any("{" in part or "}" in part for part in argv if part not in {"{input}", "{output_dir}"}):
+            fail("INVALID_ARGUMENT", "/converter_config/argv", "unsupported placeholder")
+    elif original.suffix.lower() not in {".txt", ".md", ".markdown"}:
+        fail("INVALID_ARGUMENT", "/arguments/converter-config",
+             f"{original.name} requires an applicable external converter configuration")
+    original_bytes = file_bytes(original)
+    original_hash = digest(original_bytes)
     with tempfile.TemporaryDirectory(prefix="legal-convert-") as temporary:
         staging = Path(temporary)
-        command = []
-        for part in argv:
-            if part == "{input}":
-                command.append(str(original))
-            elif part == "{output_dir}":
-                command.append(str(staging))
-            elif not command:
-                command.append(part)
-            elif part.startswith("-") or Path(part).is_absolute() or "/" not in part and not part.startswith("."):
-                command.append(part)
-            else:
-                command.append(str((config_file.parent / part).absolute()))
-        try:
-            completed = subprocess.run(command, cwd=config_file.parent, capture_output=True, check=False)
-        except OSError as exc:
-            fail("FILE_ERROR", "/converter_config/argv/0", str(exc))
-        for stream in (completed.stdout, completed.stderr):
-            if stream:
-                sys.stderr.buffer.write(stream)
-                if not stream.endswith(b"\n"):
-                    sys.stderr.buffer.write(b"\n")
-        if completed.returncode:
-            fail("CONVERTER_FAILED", "/converter", "converter returned nonzero", converter_exit_code=completed.returncode)
-        text_file, metadata_file = staging / "text.txt", staging / "metadata.json"
-        if not text_file.is_file():
-            fail("CONVERTER_OUTPUT_INVALID", "/converter_output/text", "text.txt missing")
-        if not metadata_file.is_file():
-            fail("CONVERTER_OUTPUT_INVALID", "/converter_output/metadata", "metadata.json missing")
-        try:
-            text_bytes = text_file.read_bytes()
-            if text_bytes.startswith(b"\xef\xbb\xbf"):
-                raise UnicodeError("UTF-8 BOM forbidden")
-            text = text_bytes.decode("utf-8")
-        except UnicodeError as exc:
-            fail("CONVERTER_OUTPUT_INVALID", "/converter_output/text", str(exc))
-        try:
-            metadata = read_json(metadata_file)
-            _validate_metadata(metadata, text)
-        except Exception as exc:
-            from .formats import Invalid
-            if isinstance(exc, Invalid) and exc.code == "FILE_ERROR":
-                raise
-            fail("CONVERTER_OUTPUT_INVALID", "/converter_output/metadata", str(exc))
-        if digest(file_bytes(original)) != original_hash:
-            fail("ORIGINAL_CHANGED", "/arguments/input", "original changed during conversion")
-        target.mkdir(parents=True, exist_ok=True)
-        published = []
-        try:
-            for name, data in (("text.txt", text_bytes), ("metadata.json", json.dumps(metadata, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8"))):
-                destination = target / name
+        if config_file is None:
+            try:
+                if original_bytes.startswith(b"\xef\xbb\xbf"):
+                    raise UnicodeError("UTF-8 BOM forbidden")
+                original_bytes.decode("utf-8", errors="strict")
+            except UnicodeError as exc:
+                fail("INVALID_ARGUMENT", "/arguments/input", f"input must be strict UTF-8 without BOM: {exc}")
+            metadata = {"name": original.name,
+                        "media_type": "text/plain" if original.suffix.lower() == ".txt" else "text/markdown",
+                        "conversion_method": "identity", "converter_version": "cogengine-legal/" + __version__,
+                        "anomalies": []}
+            for name, data in (("text.txt", original_bytes),
+                               ("metadata.json", json.dumps(metadata, ensure_ascii=False).encode("utf-8"))):
                 try:
-                    with destination.open("xb") as stream:
-                        published.append(destination)
-                        stream.write(data)
-                        stream.flush()
-                        os.fsync(stream.fileno())
-                except FileExistsError:
-                    fail("FILE_EXISTS", str(destination), "output already exists")
+                    (staging / name).write_bytes(data)
                 except OSError as exc:
-                    fail("FILE_ERROR", str(destination), str(exc))
-            published_text_hash = digest(file_bytes(target / "text.txt"))
-        except Exception:
-            for item in published:
-                try:
-                    item.unlink()
-                except OSError:
-                    pass
+                    fail("FILE_ERROR", str(staging / name), str(exc))
+        else:
+            _run_converter(argv, config_file, original, staging)
+        text_file, metadata_file = staging / "text.txt", staging / "metadata.json"
+        return _validate_and_publish(original, original_hash, target, text_file, metadata_file)
+
+
+def _run_converter(argv, config_file, original, staging):
+    command = []
+    for part in argv:
+        if part == "{input}":
+            command.append(str(original))
+        elif part == "{output_dir}":
+            command.append(str(staging))
+        elif not command:
+            command.append(part)
+        elif part.startswith("-") or Path(part).is_absolute() or "/" not in part and not part.startswith("."):
+            command.append(part)
+        else:
+            command.append(str((config_file.parent / part).absolute()))
+    try:
+        completed = subprocess.run(command, cwd=config_file.parent, capture_output=True, check=False)
+    except OSError as exc:
+        fail("FILE_ERROR", "/converter_config/argv/0", str(exc))
+    for stream in (completed.stdout, completed.stderr):
+        if stream:
+            sys.stderr.buffer.write(stream)
+            if not stream.endswith(b"\n"):
+                sys.stderr.buffer.write(b"\n")
+    if completed.returncode:
+        fail("CONVERTER_FAILED", "/converter", "converter returned nonzero", converter_exit_code=completed.returncode)
+
+
+def _validate_and_publish(original, original_hash, target, text_file, metadata_file):
+    if not text_file.is_file():
+        fail("CONVERTER_OUTPUT_INVALID", "/converter_output/text", "text.txt missing")
+    if not metadata_file.is_file():
+        fail("CONVERTER_OUTPUT_INVALID", "/converter_output/metadata", "metadata.json missing")
+    try:
+        text_bytes = file_bytes(text_file)
+        if text_bytes.startswith(b"\xef\xbb\xbf"):
+            raise UnicodeError("UTF-8 BOM forbidden")
+        text = text_bytes.decode("utf-8")
+    except UnicodeError as exc:
+        fail("CONVERTER_OUTPUT_INVALID", "/converter_output/text", str(exc))
+    try:
+        metadata = read_json(metadata_file)
+        _validate_metadata(metadata, text)
+    except Exception as exc:
+        if isinstance(exc, Invalid) and exc.code == "FILE_ERROR":
             raise
+        fail("CONVERTER_OUTPUT_INVALID", "/converter_output/metadata", str(exc))
+    if digest(file_bytes(original)) != original_hash:
+        fail("ORIGINAL_CHANGED", "/arguments/input", "original changed during conversion")
+    try:
+        target.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        fail("FILE_ERROR", "/arguments/output-dir", str(exc))
+    published = []
+    try:
+        for name, data in (("text.txt", text_bytes), ("metadata.json", json.dumps(metadata, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8"))):
+            destination = target / name
+            try:
+                with destination.open("xb") as stream:
+                    published.append(destination)
+                    stream.write(data)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+            except FileExistsError:
+                fail("FILE_EXISTS", str(destination), "output already exists")
+            except OSError as exc:
+                fail("FILE_ERROR", str(destination), str(exc))
+        published_text_hash = digest(file_bytes(target / "text.txt"))
+    except Exception as exc:
+        cleanup_errors = []
+        for item in published:
+            try:
+                item.unlink()
+            except OSError as cleanup:
+                cleanup_errors.append({"code": "FILE_ERROR", "path": str(item), "message": str(cleanup)})
+        if cleanup_errors:
+            original_errors = [exc.item()] if isinstance(exc, Invalid) else [{"code": "FILE_ERROR", "path": str(target), "message": str(exc)}]
+            raise InvalidBatch(original_errors + cleanup_errors) from exc
+        raise
     return {"ok": True, "input": str(original), "output_dir": str(target),
-            "text": str(target / "text.txt"), "metadata": str(target / "metadata.json"),
-            "original_hash": original_hash, "text_hash": published_text_hash,
-            "anomalies": metadata["anomalies"]}
+        "text": str(target / "text.txt"), "metadata": str(target / "metadata.json"),
+        "original_hash": original_hash, "text_hash": published_text_hash,
+        "anomalies": metadata["anomalies"]}

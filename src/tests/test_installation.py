@@ -112,12 +112,24 @@ class StandaloneInstallation(unittest.TestCase):
 
             original = work / "合同原文.txt"
             original.write_text("第一条 甲方向乙方交付货物。\n", encoding="utf-8")
+            direct = receipt(commands["legal-preprocess"], "--input", original,
+                             "--output-dir", work / "纯文本 direct")
+            self.assertEqual(Path(direct["text"]).read_bytes(), original.read_bytes())
+            self.assertEqual(direct["original_hash"], direct["text_hash"])
+            self.assertEqual(json.loads(Path(direct["metadata"]).read_bytes())["converter_version"],
+                             "cogengine-legal/" + version)
+            markdown = work / "合同 标记.MARKDOWN"
+            markdown.write_bytes('# 第一条\r\n| 字段 | "\\😀e\u0301" |\r\n'.encode("utf-8"))
+            md_receipt = receipt(commands["legal-preprocess"], "--input", markdown,
+                                 "--output-dir", work / "Markdown direct")
+            self.assertEqual(Path(md_receipt["text"]).read_bytes(), markdown.read_bytes())
             config = work / "converter.json"
             config.write_text(json.dumps({"format_version": 1, "argv": [runtime["python"], str(converter),
                               "ok", "{input}", "{output_dir}"]}), encoding="utf-8")
             converted = receipt(commands["legal-preprocess"], "--input", original,
                                 "--output-dir", work / "converted", "--converter-config", config)
             self.assertEqual(Path(converted["text"]).read_bytes(), original.read_bytes())
+            self.assertEqual(json.loads(Path(converted["metadata"]).read_bytes())["converter_version"], "acceptance.1")
             registered = receipt(commands["legal-case"], "register", "--db", database, "--original", original,
                                  "--text", converted["text"], "--metadata", converted["metadata"])
 

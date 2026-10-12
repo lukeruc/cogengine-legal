@@ -67,4 +67,6 @@ task = export_initial_synthesis_task(
 
 它不返回读完或语义通过；复用前仍检查笔记实际已读/未读。共用记录变化时归纳使用新完整查询，成功准备的正式身份和进度以数据库为准。
 
-导出材料附带同版 reader 模板，归纳 input_files 附带 summarizer 模板、helper-tools、引句/preparation 样例、虚构夹具及完整 clauses 快照。角色显示名按模板使用；已有 task_id/role 字段不迁移。主会话原样带入固定正文并填实第二部分，保存实际派发；单段在原 reader 会话继续 summarizer，不因名称另开会话。资料导出不是子任务权限，也不自动生成法律判断。
+主会话从已安装 templates/reader.md、templates/summarizer.md 展开固定正文，模板不在子任务 input_files 中重复交付。导出提供本角色资源候选和完整快照，正文填写逐文件白名单的范围、用途、开始或触发读取时机；input_files 授权必须一致，候选不等于全部必读。reader 的窗口路径显式列入 input_files；额外原文回读可授权 manifest.directory 中明确条目的 text_file 等固定清单，不能授权整个子目录。只有被指定的字段/条目才扩大文件集合。
+
+派发 summarizer 前主会话交接导出/版本核验回执、case_id/词表哈希/固定版本/共享序号依据、各 reader 实际范围声明及仍有问题，输出路径由排他发布处理竞争。summarizer 按路径读笔记范围及正文，正常承接机械核验；可见矛盾和不足仍须处理，不重复目录/大小/所有键探查。共享形状见 helper-tools“固定输入”；笔记足够时用准确原句和 clauses 快照生成锚，不要求逐条再打开原文。初始 unread 不代表当前回报。

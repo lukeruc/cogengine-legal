@@ -3,7 +3,7 @@
 import argparse
 import sys
 
-from .formats import Invalid, exception_result, fail, output
+from .formats import InvalidBatch, exception_result, fail, output
 from .preprocessing import convert
 
 
@@ -16,7 +16,7 @@ def main(argv=None):
     parser = Parser(prog="legal-preprocess")
     parser.add_argument("--input", required=True)
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--converter-config", required=True)
+    parser.add_argument("--converter-config")
     try:
         actual = list(sys.argv[1:] if argv is None else argv)
         seen = set()
@@ -28,6 +28,10 @@ def main(argv=None):
                 seen.add(key)
         args = parser.parse_args(actual)
         return output(convert(args.input, args.output_dir, args.converter_config))
+    except InvalidBatch as exc:
+        # Publication plus cleanup errors are file failures, not record validation.
+        return output({"ok": False, "errors": exc.items[:100],
+                       "errors_truncated": len(exc.items) > 100}, 3)
     except Exception as exc:
         return exception_result(exc)
 

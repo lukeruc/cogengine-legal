@@ -136,3 +136,46 @@ write_json(new_submission_path, document)
 样例的固定虚构内容仅供格式演示；真实任务自行填本合同业务数据和判断，不能无条件复用样例的单元、来源、完整声明或法律结论。样例运行不要求主动阅读库实现，也不授权读取别的任务。
 
 库失败抛 `legal.formats.Invalid` 或 `InvalidBatch`，含 code/path/message；Invalid 用 `.item()`，InvalidBatch 用 `.items` 获取诊断，不吞异常。参数/范围错误 INVALID_ARGUMENT，快照无版本 REFERENCE_NOT_FOUND，序列化 INVALID_JSON，路径/读写 FILE_ERROR，已存在 FILE_EXISTS；重复/引用/来源沿用既有码。按明确输入错误自行修正；资料缺失、安装故障、说明与程序矛盾交主会话。原两个脚本仍按上述 stdout 和退出码处理。新路径由主会话按原规则分配，不能为了重试覆盖成功产物。
+
+## 固定输入、章节用途与空结果
+
+只读主会话白名单给出的文件及范围；指定章节只输出该章节，禁止因为说明文件短就整篇读。错误包装诊断显示问题路径、类型/必要键名，不输出整个嵌套对象。快照与原始 query 回执不是同一种外壳，不探测多种包装层：
+
+| 输入 | 固定读取位置 |
+|---|---|
+| 全分页快照 | {case_id,checked_sequence,items}，已收齐分页 |
+| vocabulary | items 恰含一项；items[0] 直接有 format_version/units/slots/assignments/hash，没有 source/vocabulary 包装层 |
+| clauses | items 为完整记录，object_id/record_id/kind/status 在外层，原句在 item.data.text；地址、编号、sequence、text_version 同在 data |
+| overview | items=[] 为无概要；非空项直接含 body/text_versions/authored_by，不是 node.data |
+| events/shared-objects | items 为完整正式记录，保留 data/evidence/provenance 和对象/记录身份；不能仅用名称简表 |
+| synthesis shared | 顶层 overview/events/shared-objects/vocabulary 四项均为快照，词表是 shared["vocabulary"]["items"][0] |
+| manifest/directory | 范围及固定路径索引，初始 unread 不代表已交付笔记的实际已读状态 |
+
+```python
+from legal.reader_helpers import read_json
+snapshot = read_json(vocabulary_path)  # 授权实际绝对路径
+vocabulary = snapshot["items"][0]
+units = vocabulary["units"]
+slots = vocabulary["slots"]
+assignments = vocabulary["assignments"]
+# synthesis: vocabulary = read_json(shared_path)["vocabulary"]["items"][0]
+```
+
+必需字段明确访问。缺 units、items=[] 缺词表项、错误类型/包装层报告具体文件/字段路径、预期及实际问题、影响，交主会话补齐；不使用 get("units", []) 或 source/vocabulary 空值兜底。实际 units=[] 才表示空单元；events.items=[] 才表示无已准备事件。规范可选字段如 original_number 可沿用缺省语义。tagger 开始读全 unit.id/description，extractor 读全部 units/slots/assignments；完整业务资料不能用按需规则省略。
+
+reader 开始读自身职责、范围、目录、本段原文/必要上下文，不前置构造样例。summarizer 先承接核验、读全部笔记声明/正文和材料目录，在认定前读正式共享身份；引句/限定不足定向回读，写记录时查 data-formats §3—§4。tagger 构造时查 clause/evidence 和修订用法；extractor 确认槽时读 §1，表达具体值时查 §2，写记录时查 §3—§4。工具和样例在需调用时查；已知道用法可直接调用，不反复读说明。
+
+## 任务数据组织与公共处理
+
+可将明确引句三元组组织为请求数组；不加自编唯一性、匹配次数、版本存在或 schema 校验：
+
+```python
+from legal.reader_helpers import write_json
+requests = [{"local_id": local_id, "clause_record_id": record_id, "quote": quote}
+            for local_id, record_id, quote in chosen_quotes]
+write_json(request_file, requests)
+```
+
+随后直接调用 find_quote。text.count 对 aaa/aa 的非重叠计数不能替代公共重叠规则。已知准确区间才用 quote_from_span，不猜偏移。明确字符错误可对授权条款打印局部 repr 并改请求，不归一化原文/近似匹配；版本缺失交主会话。任务脚本可循环整理本任务数据和核对负责集合，判断依据是用途，不是行数或后缀。clause 修订调用 clause_revision；assemble 和 build_submission 二选一即可，不要求重复组装检查。正式 write 的独立业务校验保持。
+
+精确 stat/exists 不扩张目录权限；FILE_EXISTS 交主会话分配路径/确定重放，不读取旧提交。保留原 stdout/stderr 和退出码；不得用 ; echo 覆盖最终状态、2>/dev/null 或 2>&1 | head 丢诊断。展示摘要时保留可追查完整结果，工具回执截断和原文截断分别补取。

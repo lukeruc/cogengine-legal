@@ -25,11 +25,11 @@ print(install_root / "references")
 
 ## 输入与依赖
 
-先明确材料清单、新合同工作根目录或已有合同工作目录、全局词表路径。需转换时还需每份原件的转换配置。按本文件真实目录读取 `../../runtime.json`、`../../references/case-cli.md`、`../../references/data-formats.md`。安装信息缺失、格式错误或路径失效时报告安装问题，不从 PATH 另找工具。需要转换时读取 `../legal-preprocess/SKILL.md`。sub-agent 说明位于本目录 `references/`。
+先明确材料清单、新合同工作根目录或已有合同工作目录、全局词表路径。需转换时还需每份原件的转换配置。按本文件真实目录读取 `../../runtime.json`、`../../references/case-cli.md`、`../../references/data-formats.md`。安装信息缺失、格式错误或路径失效时报告安装问题，不从 PATH 另找工具。各份素材都沿用统一预处理入口，读取 `../legal-preprocess/SKILL.md`；纯文本无配置可直接接收，不要求转换器。sub-agent 说明位于本目录 `references/`。
 
 ## 合同工作目录
 
-新合同的**第一步**是在工作根目录排他创建 `contract-YYYYMMDDTHHMMSSZ`（UTC）；同秒撞名依次加 `-02`、`-03`，不覆盖旧目录。把原件逐字复制到 `inputs/materials/001-<原文件名>` 等路径；全局词表复制到 `inputs/vocabulary/`，转换配置及所需相对文件复制到 `inputs/converters/`。后续 CLI 只读取合同工作目录内的工作副本，数据库固定为根目录的 `contract.sqlite`。每份素材的首次转换结果放在 `converted/001/0001/text.txt` 和 `metadata.json`，重转换用 `converted/001/0002/` 等新目录；已有转换结果也先复制到对应路径。素材编号随首次登记顺序固定，不重排。
+新合同的**第一步**是在工作根目录排他创建 `contract-YYYYMMDDTHHMMSSZ`（UTC）；同秒撞名依次加 `-02`、`-03`，不覆盖旧目录。把原件逐字复制到 `inputs/materials/001-<原文件名>` 等路径；全局词表复制到 `inputs/vocabulary/`，需转换时将配置及非代码附属文件复制到 `inputs/converters/`，转换器和适配程序复用已配置的绝对安装路径。后续 CLI 只读取合同工作目录内的工作副本，数据库固定为根目录的 `contract.sqlite`。每份素材的首次转换结果放在 `converted/001/0001/text.txt` 和 `metadata.json`，重转换用 `converted/001/0002/` 等新目录；已有转换结果也先复制到对应路径。素材编号随首次登记顺序固定，不重排。
 
  sub-agent 任务、写入文件、工具回执、分组及报告分别放 `tasks/`、`submissions/`、`receipts/`、`groups/`、`reports/`；具体递增文件名和重复运行规则见 `../../references/case-cli.md`。每个子任务只写分配的合同工作目录内路径。续做同一合同、纠错或新增材料时沿用该目录及其 `contract.sqlite`；不另建目录或复制数据库。旧合同工作目录不自动迁移。文件名不是状态，实际进度仍查库。
 
@@ -46,11 +46,11 @@ print(install_root / "references")
 
 ## 两部分角色派发（主会话）
 
-按职责读取 `templates/reader.md`、`templates/summarizer.md`、`templates/tagger.md` 或 `templates/extractor.md`。实际派发恰含“固定内容”和“本次任务要求”两部分；第一部分原样完整带入，第二部分填实身份、目标、责任/上下文、按顺序的输入、实际绝对路径、格式参数、独立输出、可用操作、自然语言关注或纠错要求及返回摘要，保存实际派发正文到现有 tasks。不能只发模板路径或临时改写权限。
+按职责读取 `templates/reader.md`、`templates/summarizer.md`、`templates/tagger.md` 或 `templates/extractor.md`。实际派发恰含“固定内容”和“本次任务要求”两部分；第一部分原样完整带入，第二部分填实身份、目标、责任/上下文、可读文件白名单（绝对文件路径、内容范围、用途、开始必读或具体触发时机）、格式参数、独立输出、可用操作、自然语言关注或纠错要求及返回摘要，保存实际派发正文到现有 tasks。不能只发模板路径或临时改写权限。
 
 角色实例用 reader、summarizer、tagger、extractor，同类并行加 -1、-2 等；宿主 ID 保留寻址，不能改名就在标题和摘要显示职责。task_id、旧 role 代码和正式 ID 不因显示名变化迁移；submitted_by 由主会话明确交付。单段 reader 完成后沿用原会话派发 summarizer 内容，不新开实例。
 
-主会话查询并固定全部分页、正式版本和共享 ID。每个角色只拿自己的说明、完整数据、需要的工具说明与同版样例；纯阅读不用无关构造样例。明确授权可定位原文范围，不能把整个 tasks 或安装目录作为自由浏览权限。summarizer 的已完成 reader 笔记由主会话正式交付。检查路径存在、输出未占用，给足资料后再派发；不把数据库或正式 CLI 路径当子任务接口。
+主会话查询并固定全部分页、正式版本和共享 ID。每个角色只拿自己的说明、完整数据、需要的工具说明与同版样例；纯阅读不用无关构造样例。固定索引须指定字段和条目组成的确定文件集合，不能授权整个目录。input_files 与实际授权一致；导出资源供选择，不是全部必读清单。主会话展开模板后不把模板路径交给 sub-agent 重读。文件里的链接不自动授权；自有产物可读，续做旧文件明确交接。执行辅助脚本不授予读源码权限。summarizer 的已完成 reader 笔记由主会话正式交付，同时交接已执行的文件/版本核验、共享查询序号、每段实际已读/未读/截断回报及尚未解决的问题。summarizer 从笔记范围声明及正文进入归纳，处理可见矛盾和具体回读需求，不重复正常机械核验。检查路径存在、输出未占用，给足资料后再派发；不把数据库或正式 CLI 路径当子任务接口。
 
 `preparation.md` §2 给 reader，§3—§4 给 summarizer；tagger 用 `tagging.md`，extractor 用 `extraction.md`。主会话操作分别在本文件、`reading-inputs.md`、`handoff.md`；各角色无需读取主会话编排说明来判断权限。纠错交原角色，资料/安装/实现问题由主会话处理，不新增 fixer/reviewer 环节。
 

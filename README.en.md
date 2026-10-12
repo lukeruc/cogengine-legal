@@ -61,7 +61,7 @@ The project includes four skills for agents and three command-line tools for car
 
 | Skill | Purpose |
 |---|---|
-| [`legal-preprocess`](src/skills/legal-preprocess/SKILL.md) | Invoke a configured external converter to produce text and metadata ready for registration. |
+| [`legal-preprocess`](src/skills/legal-preprocess/SKILL.md) | Receive Markdown/TXT directly, or invoke an explicitly configured converter to produce text and metadata. |
 | [`legal-case`](src/skills/legal-case/SKILL.md) | Organize ingestion, reading, and relationship extraction for one contract; submit results and carry out queries, reconciliation, and corrections. |
 | [`legal-initialize`](src/skills/legal-initialize/SKILL.md) | Derive an initial vocabulary from designated materials and complete human review through comments in files. |
 | [`legal-vocab`](src/skills/legal-vocab/SKILL.md) | Maintain and revise the vocabulary in response to gaps found in cases or requests from domain professionals. |
@@ -70,7 +70,7 @@ The project includes four skills for agents and three command-line tools for car
 
 | Command | Purpose |
 |---|---|
-| `legal-preprocess` | Run the configured conversion process and check its outputs. |
+| `legal-preprocess` | Receive plain text or run an explicit conversion configuration, then check the outputs. |
 | `legal-case` | Initialize a contract database, register materials, split clauses, write records, query, group, and reconcile. |
 | `legal-vocab` | Create, inspect, modify, and compare vocabularies; aggregate vocabulary gaps found in cases. |
 
@@ -167,3 +167,5 @@ The project essays are available in both languages. The installation guide, skil
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+UTF-8 text without BOM (.md/.txt/.markdown, case insensitive) can be received without an external converter. Explicit configurations take priority. DOCX/PDF/scans still require a configured converter; the agent reports affected materials and missing configuration to the user. Installing the core does not install conversion engines.

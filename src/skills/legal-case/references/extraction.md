@@ -46,3 +46,5 @@
 - **三种缺失**：字段未出现、原文明示空白、词表不能承载是不同情况。missing_slot表示原文有规定但适用词表缺槽，不表示原文没有填值；unmatched_unit表示没有合适单元。先查完整快照和已有对象，不能仅按单元名称收窄定义或否定已经记录的地址／公式。gap写入后不可修改或撤销，发现错误时报告其固定身份与理由。
 
 输出一份 `phase=extraction` JSON，`covered_clauses` 列本任务负责的条款对象与读取版本；同批记录以 local_id 互引。返回 `{task_id,output_file,responsible_clauses,record_counts,issues}`。主会话仅调用一次 `write --input`；失败时 extractor 根据 code/path 修正整份文件，不直接写数据库。已入库对象纠错沿用稳定 object_id 与追加版本，不按名称悄悄合并。
+
+快照词表直接读 items[0] 下 units/slots/assignments/hash（无额外包装）；缺必需字段/类型错误报告路径及影响，合法空数组才可称为空。按白名单范围、用途和时机读资料，链接/相邻目录不自动授权，模板固定正文已展开不用重读。条款 item.data 是业务数据，完整 evidence/provenance 留在外层。构造时查 helper-tools 的对应函数/样例；只组织本任务数据，不重复实现匹配、修订或通用校验。完整诊断和原退出码保留，失败交原角色修正，额外材料交主会话补授权。

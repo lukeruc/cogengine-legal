@@ -295,3 +295,9 @@ II 级 evidence.path 必须直接指向整个非空 quantity 值且 amount 非 n
 | decimal，2 位且其他同首例 | `12,34.50 USD` | 1234.50 USD | 分组错误，失败 |
 | date，day，[4,1,1]，分隔 年/月，后缀 日 | `2026年9月5日` | 2026-09-05/day | 通过；不得丢失原表层 |
 | date，day，[4,2,2]，分隔 `-`/`-` | `2026-02-29` | 同名 date | 非法日期，失败 |
+
+## 固定查询快照的读取位置
+
+主会话全分页导出是 {case_id,checked_sequence,items}，原始 CLI 回执另含 ok/quality/分页字段，不混用。词表 items 恰含一项，items[0] 直接是 format_version/units/slots/assignments/hash，无 source/vocabulary 包装。clause 原文在 item.data.text，外层 object_id/record_id/evidence/provenance 不是业务 data。overview 非空 items 项直接有 body/text_versions/authored_by；events/共享节点为完整正式记录，空 items 是明确结果。synthesis shared 文件四个键 overview/events/shared-objects/vocabulary 各装一个快照，词表位置 shared["vocabulary"]["items"][0]。必需字段缺失或词表 items 缺项报告具体文件/字段/预期/影响，不能 get 空值兜底；合法 units=[] 和共享 items=[] 才可报告为空。可选字段的原规则不变。
+
+按角色及用途查章节：summarizer 写主体/事件/概要时查 §3—§4；tagger 查 §3 clause 和 evidence 及 §4；extractor 必须掌握 §1 完整槽适用规则，表达具体值按需查 §2，构造提交查 §3—§4。读取受派发白名单约束，说明中的相对链接不授予额外文件权限。公共工具可读授权的完整快照；模型阅读范围与主责仍取本次任务。

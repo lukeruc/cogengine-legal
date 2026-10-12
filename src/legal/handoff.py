@@ -79,10 +79,11 @@ def export_extraction_tasks(db_path, plans, output_dir, resource_root, clause_id
         if not source.is_file():
             fail("FILE_ERROR", str(source), "installed task reference missing")
         files[name] = source.read_bytes()
+    template = resources / "skills/legal-case/templates/extractor.md"
     role_inputs = [resources / "skills/legal-case" / name for name in (
-        "templates/extractor.md", "references/helper-tools.md", "examples/quote_requests.py",
+        "references/helper-tools.md", "examples/quote_requests.py",
         "examples/extraction.py", "examples/fixture.json")]
-    for source in role_inputs:
+    for source in [template, *role_inputs]:
         if not source.is_file():
             fail("FILE_ERROR", str(source), "installed extractor resource missing")
     for index, plan in enumerate(plans):

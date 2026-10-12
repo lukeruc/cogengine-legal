@@ -149,7 +149,7 @@ cwd  = "/absolute/contract-work-directory"
 
 | 命令 | 用途 |
 |---|---|
-| `legal-preprocess` | 按显式外部转换配置生成 `text.txt`、`metadata.json` |
+| `legal-preprocess` | 直接接收 Markdown/TXT 或按显式外部转换配置生成 `text.txt`、`metadata.json` |
 | `legal-case` | 合同库初始化、登记、切分、写入、查询、分组、对账 |
 | `legal-vocab` | 词表初始化、查阅、变更、比较、案件缺口汇总 |
 
@@ -179,3 +179,5 @@ cwd  = "/absolute/contract-work-directory"
 legal-case 随安装复制 `templates/reader.md`、`summarizer.md`、`tagger.md`、`extractor.md`，以及 `examples/` 中四份可调用样例与虚构夹具。主会话按角色原样带入固定内容，填实本次任务要求和路径；sub-agent 不需源码或 README 来猜用法。已有安装仍须重新构建 wheel 并以 `--upgrade` 更新，同一版本号也须替换包与配套 skill。
 
 同一专用解释器中的 `legal.reader_helpers` 提供 read_json/read_text/write_json、quote_from_span、ref/source/evidence、record/node/relation/reference/detail、clause_revision、header/assemble。用法和失败处理见 legal-case 的 `references/helper-tools.md`；两个文件脚本参数继续兼容。构造仅处理已交付文件和普通内存数据，法律判断与覆盖声明由相应角色给出，正式写入仍由主会话完成。
+
+Markdown/TXT/Markdown 后缀材料（.md/.txt/.markdown，大小写不敏感）无配置时可直接接收，要求 UTF-8 且无 BOM，不需要外部转换器。DOCX/PDF/扫描件仍需显式配置适用转换器；缺少时 agent 应说明受影响材料和需补配置。显式配置优先，失败不静默改用直通。安装本项目不会自动安装转换引擎。

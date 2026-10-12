@@ -61,7 +61,7 @@
 
 | Skill | 用途 |
 |---|---|
-| [`legal-preprocess`](src/skills/legal-preprocess/SKILL.md) | 调用已配置的外部转换程序，将原件转为可登记的文本和元数据。 |
+| [`legal-preprocess`](src/skills/legal-preprocess/SKILL.md) | 直接接收 Markdown/TXT，或调用显式配置的转换程序，产出文本和元数据。 |
 | [`legal-case`](src/skills/legal-case/SKILL.md) | 组织单份合同的入库、阅读与关系提取，提交结果并完成查询、对账和纠错。 |
 | [`legal-initialize`](src/skills/legal-initialize/SKILL.md) | 从指定语料归纳首版词表，通过文件意见完成人工审定。 |
 | [`legal-vocab`](src/skills/legal-vocab/SKILL.md) | 根据案件缺口或专业人员提出的要求，维护和调整词表。 |
@@ -70,7 +70,7 @@
 
 | 命令 | 用途 |
 |---|---|
-| `legal-preprocess` | 执行转换配置，核对转换产物。 |
+| `legal-preprocess` | 接收纯文本或执行转换配置，核对两文件产物。 |
 | `legal-case` | 初始化合同库、登记材料、切分条款、写入、查询、分组和对账。 |
 | `legal-vocab` | 创建、查阅、变更和比较词表，汇总案件中的词表缺口。 |
 
@@ -126,7 +126,7 @@ INSTALL_ROOT="/absolute/path/to/legal-install"
 
 ### 3. 处理第一份合同
 
-完成注册并准备好词表和转换配置后，可以向 agent 提供以下请求，将路径替换为实际文件位置：
+完成注册并准备好词表（需转换时另备适用配置）后，可以向 agent 提供以下请求，将路径替换为实际文件位置：
 
 ```text
 请使用 legal-case，将以下材料作为一份合同入库：
@@ -164,3 +164,5 @@ agent 会按 skill 建立合同工作目录、准备材料、组织阅读与提�
 ## 许可证
 
 本项目采用 [MIT 许可证](LICENSE)。
+
+Markdown/TXT/Markdown 后缀材料（.md/.txt/.markdown，大小写不敏感）无配置时可直接接收，要求 UTF-8 且无 BOM，不需要外部转换器。DOCX/PDF/扫描件仍需显式配置适用转换器；缺少时 agent 应说明受影响材料和需补配置。显式配置优先，失败不静默改用直通。安装本项目不会自动安装转换引擎。

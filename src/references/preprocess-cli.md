@@ -8,9 +8,19 @@
 python -m legal.preprocess_cli --input /path/original.pdf --output-dir /path/converted --converter-config /path/converter.json
 ```
 
-三个参数必需。输出目录应不存在或为空。配置是严格 JSON：
+input/output-dir 必需，converter-config 可选，每个参数至多一次。输出目录不存在或为空。无配置且后缀为 .txt/.md/.markdown（大小写不敏感）时直接接收；显式配置优先，无论后缀；其他格式无配置报 INVALID_ARGUMENT，path=/arguments/converter-config，不启动进程或发布产物。
 
-由案件入库 skill 调用时，`--input` 使用案件目录 `inputs/materials/` 中的原件副本，`--converter-config` 使用 `inputs/converters/<素材号>/<转换号>/config.json`，`--output-dir` 使用新的空 `converted/<素材号>/<转换号>/`；独立预处理或词表初始化仍由调用方指定路径。
+纯文本调用：
+
+```bash
+python -m legal.preprocess_cli --input /path/original.md --output-dir /path/converted
+```
+
+直通要求严格 UTF-8、无 BOM；非法编码/BOM 报 INVALID_ARGUMENT，path=/arguments/input；I/O 报 FILE_ERROR。保留原字节、换行、空白、Unicode、Markdown 标记和表格，不渲染、清洗或猜编码。text.txt 与原件字节/哈希相同，元数据 name=输入文件名，media_type 为 .txt 的 text/plain 或 Markdown 的 text/markdown，conversion_method=identity，converter_version=cogengine-legal/加实际安装版本，anomalies=[]。空文本如实保留，不声明读完或语义完整。发布前复核原件哈希，复用排他发布和失败清理。
+
+显式外部配置是严格 JSON：
+
+由案件入库 skill 调用时，`--input` 使用案件目录 `inputs/materials/` 中的原件副本，需要外部转换时 `--converter-config` 使用 `inputs/converters/<素材号>/<转换号>/config.json`，`--output-dir` 使用新的空 `converted/<素材号>/<转换号>/`；独立预处理或词表初始化仍由调用方指定路径。
 
 ```json
 {"format_version":1,"argv":["/absolute/path/to/converter","--input","{input}","--output-dir","{output_dir}"]}
@@ -27,3 +37,9 @@ python -m legal.case_cli register --db /path/contract.sqlite --original /path/or
 ```
 
 再次转换已有素材时，由调用方在用于登记的元数据中加 `material_id`；预处理本身不猜案件身份。初始化语料可直接记录转换回执与文件哈希，不因此建立案件库。
+
+## 转换器复用与通知
+
+主会话按指定配置核对实际程序、解释器及已知适配入口并复用安装绝对路径，不搜索 PATH/网络或其他项目猜工具，不自动安装或临时另写转换器。只复制配置和非代码附属文件；项目维护的适配源码归 src。纯文本直通不创建 config.json 或 identity adapter，结果仍放 converted/<素材号>/<处理序号>/。
+
+需要转换却缺配置时，必须通知用户哪些材料需要哪类转换器、当前缺什么及下一步输入；受影响材料不登记、不派下游，不静默跳过。程序/入口缺失或不可执行列配置及缺失路径；非零退出、缺依赖、格式不支持保留实际诊断，不一律称“未安装”。编码问题通知用户提供合格文本或明确转码安排。可继续合法独立输入，但如实交接未处理范围；配置补齐后沿用工作副本和新的空输出目录续做。完整 stdout/stderr 与原退出码保留，成功回执不证明转换语义完整。

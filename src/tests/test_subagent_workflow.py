@@ -243,7 +243,8 @@ class ExamplesAndHandoff(unittest.TestCase):
             exported=export_initial_reading_tasks(db,root/'tasks/0001',SRC,root/'submissions/prep.json',window_chars=20)
             task=exported['tasks'][0]
             self.assertEqual(task['role'],'reading_and_synthesis')
-            self.assertIn(str(SRC/'skills/legal-case/templates/reader.md'),task['input_files'])
+            self.assertNotIn(str(SRC/'skills/legal-case/templates/reader.md'),task['input_files'])
+            self.assertTrue(all(w['file'] in task['input_files'] for w in task['windows']))
             self.assertNotIn(str(EXAMPLES/'tagging.py'),task['input_files'])
             Path(task['output_file']).write_text('阅读范围：全部已读，无截断。\n')
             summary=export_initial_synthesis_task(db,exported['manifest_file'],root/'tasks/0001/0002-synthesis.json')

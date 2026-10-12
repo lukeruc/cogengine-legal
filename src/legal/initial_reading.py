@@ -140,10 +140,11 @@ def export_initial_reading_tasks(db_path, output_dir, resource_root, preparation
                     resources / "skills/legal-case/references/handoff.md",
                     resources / "references/case-cli.md"]
     reader_template = resources / "skills/legal-case/templates/reader.md"
+    summarizer_template = resources / "skills/legal-case/templates/summarizer.md"
     summarizer_inputs = [resources / "skills/legal-case" / name for name in (
-        "templates/summarizer.md", "references/helper-tools.md", "examples/quote_requests.py",
+        "references/helper-tools.md", "examples/quote_requests.py",
         "examples/preparation.py", "examples/fixture.json")]
-    dependencies += [reader_template, *summarizer_inputs]
+    dependencies += [reader_template, summarizer_template, *summarizer_inputs]
     for path in references + dependencies:
         if not path.is_file():
             fail("FILE_ERROR", str(path), "installed reading reference missing")
@@ -256,7 +257,7 @@ def export_initial_reading_tasks(db_path, output_dir, resource_root, preparation
                 "role": "reading_and_synthesis" if len(segments) == 1 else "segment_reading",
                 "main_reading_clauses": [{"object_id": e["object_id"], "record_id": e["record_id"]} for e in segment],
                 "context_clauses": context, "windows": windows,
-                "input_files": common + [str(reader_template), str(destination / guide_name)] + [e["text_file"] for e in context],
+                "input_files": common + [str(destination / guide_name)] + [w["file"] for w in windows] + [e["text_file"] for e in context],
                 "output_file": str(destination / f"{index:04d}-notes.md"),
                 "preparation_file": str(output) if len(segments) == 1 else None}
         files[f"{task_id}.json"] = _json_bytes(task)

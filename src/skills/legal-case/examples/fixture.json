@@ -33,5 +33,88 @@
         "provenance": {}
       }
     ]
+  },
+  "vocabulary_snapshot": {
+    "case_id": "00000001-1111-4111-8111-111111111111",
+    "checked_sequence": 3,
+    "items": [
+      {
+        "format_version": 1,
+        "units": [
+          {
+            "id": "00000002-1111-4111-8111-111111111111",
+            "name": "付款",
+            "description": "采购人支付货款及其条件"
+          }
+        ],
+        "slots": [
+          {
+            "id": "00000003-1111-4111-8111-111111111111",
+            "name": "金额",
+            "description": "付款金额",
+            "value_schema": {
+              "form": "quantity"
+            }
+          }
+        ],
+        "assignments": [
+          {
+            "unit_id": "00000002-1111-4111-8111-111111111111",
+            "slot_id": "00000003-1111-4111-8111-111111111111"
+          }
+        ],
+        "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  },
+  "synthesis_shared": {
+    "overview": {
+      "case_id": "00000001-1111-4111-8111-111111111111",
+      "checked_sequence": 3,
+      "items": []
+    },
+    "events": {
+      "case_id": "00000001-1111-4111-8111-111111111111",
+      "checked_sequence": 3,
+      "items": []
+    },
+    "shared-objects": {
+      "case_id": "00000001-1111-4111-8111-111111111111",
+      "checked_sequence": 3,
+      "items": []
+    },
+    "vocabulary": {
+      "case_id": "00000001-1111-4111-8111-111111111111",
+      "checked_sequence": 3,
+      "items": [
+        {
+          "format_version": 1,
+          "units": [
+            {
+              "id": "00000002-1111-4111-8111-111111111111",
+              "name": "付款",
+              "description": "采购人支付货款及其条件"
+            }
+          ],
+          "slots": [
+            {
+              "id": "00000003-1111-4111-8111-111111111111",
+              "name": "金额",
+              "description": "付款金额",
+              "value_schema": {
+                "form": "quantity"
+              }
+            }
+          ],
+          "assignments": [
+            {
+              "unit_id": "00000002-1111-4111-8111-111111111111",
+              "slot_id": "00000003-1111-4111-8111-111111111111"
+            }
+          ],
+          "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
   }
 }
