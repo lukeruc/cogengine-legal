@@ -160,6 +160,7 @@ write_json(new_submission_path, document)
 |---|---|
 | 全分页快照 | {case_id,checked_sequence,items}，已收齐分页 |
 | vocabulary | items 恰含一项；items[0] 直接有 format_version/units/slots/assignments/hash，没有 source/vocabulary 包装层 |
+| tagging 的 units.json | 直接为完整 unit 数组；逐项读取 id/description 等字段，不访问 items[0] |
 | clauses | items 为完整记录，object_id/record_id/kind/status 在外层，原句在 item.data.text；地址、编号、sequence、text_version 同在 data |
 | overview | items=[] 为无概要；非空项直接含 body/text_versions/authored_by，不是 node.data |
 | events/shared-objects | items 为完整正式记录，保留 data/evidence/provenance 和对象/记录身份；不能仅用名称简表 |
@@ -173,7 +174,8 @@ vocabulary = snapshot["items"][0]
 units = vocabulary["units"]
 slots = vocabulary["slots"]
 assignments = vocabulary["assignments"]
-# synthesis: vocabulary = read_json(shared_path)["vocabulary"]["items"][0]
+# 上例仅用于已交付的完整 vocabulary 查询快照。
+# tagging 的 units.json：units = read_json(units_path)
 ```
 
 必需字段明确访问。缺 units、items=[] 缺词表项、错误类型/包装层报告具体文件/字段路径、预期及实际问题、影响，交主会话补齐；不使用 get("units", []) 或 source/vocabulary 空值兜底。实际 units=[] 才表示空单元；events.items=[] 才表示无已准备事件。规范可选字段如 original_number 可沿用缺省语义。tagger 开始读全 unit.id/description，extractor 读全部 units/slots/assignments；完整业务资料不能用按需规则省略。

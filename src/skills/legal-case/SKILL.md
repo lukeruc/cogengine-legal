@@ -28,6 +28,21 @@ raise SystemExit(result.returncode)
 
 成功回执 result 给出 install_root、python、commands、workspace_root 和 workspaces_file。其余准备辅助用该专用 python；相对资料以本 skill 真实目录为基准。只访问确定路径，不列安装树、读源码/README 或预读全部阶段。故障报告具体路径，不从 PATH 找替代工具。不需要词表的初始化、预处理及续做不读取默认词表配置。
 
+## 当前阶段需要的说明
+
+以下路径都以本 `SKILL.md` 解析符号链接后的真实目录为基准。`references/preparation.md` 位于 `<install-root>/skills/legal-case/references/`；共用命令说明位于 `<install-root>/references/`。按下面的确定链接进入当前阶段，无需在两个 references 目录之间搜索。
+
+| 当前操作 | 读取内容 |
+|---|---|
+| 新案配置和 `prepare_task.py case` | [startup.md](references/startup.md)：配置、建案参数、公共调用与回执规则 |
+| 预处理、登记、切分及正式写入 | [预处理 skill](../legal-preprocess/SKILL.md)；[case-cli.md](../../references/case-cli.md) 的当前命令章节 |
+| 首次派 reader：`reading` | [reading-inputs.md §1](references/reading-inputs.md#1-reading准备初读任务) 的完整输入示例；[preparation.md §1—§2](references/preparation.md#1-主会话固定版本并准备全部材料) 的分段和阅读职责 |
+| 收齐笔记，派两个 summarizer：`synthesis` | [reading-inputs.md §2—§3](references/reading-inputs.md#2-synthesis准备两个归纳任务) 的实际阅读回报与输出交接；[preparation.md §3—§4](references/preparation.md#3-summarizer主体与事件) 的两种职责 |
+| 派 tagger：`tagging` | [handoff.md §1](references/handoff.md#1-tagging准备打标任务) 的调用；[tagging.md](references/tagging.md) 的分类要求 |
+| 分组后派 extractor：`extraction` | [handoff.md §2—§3](references/handoff.md#2-extraction准备提取任务) 的调用与责任分配；[extraction.md](references/extraction.md) 的提取要求 |
+
+**`reading` 的 `preparation_files` 是主会话预定的两个最终提交 JSON 路径。** 分别填合同 `submissions/` 下尚不存在的主体／事件提交和概要提交路径；模板由程序从安装 `templates/` 加载。不要把 `.md` 模板、任务说明或 `tasks/` 中间文件填入这个字段，也不要预先创建空提交文件。参数不明时查当前阶段的字段表和示例；说明缺失或与程序矛盾时报告具体字段，不通过故意缺参、虚构路径或目录遍历探测接口。
+
 ## 输入与准备
 
 明确材料清单、新案或续做。新案读取本会话工作区对应 workspaces.json 项及安装 vocabularies 下的路径列表；首个非空行默认，明确选择必须已登记，一次选择不改顺序。缺配置或默认失效先报告具体项，不搜索词表或跳选后项。配置格式及准备调用见 `references/startup.md`，当前正式操作参数见 `../../references/case-cli.md`；业务格式在生成正式记录时按需读取。
@@ -39,17 +54,17 @@ raise SystemExit(result.returncode)
 1. 新案先用 case 固定准备创建目录并复制输入，再以案件内词表副本调用 `case_cli init` 冻结词表；已有案沿用目录，先查询 `progress`、词表哈希与当前回执。
 2. 各份素材经预处理 skill 取得文本与元数据，用 `register` 登记原件和全文，再用 `split` 切分。异常影响阅读时依既有规则要求更好源件。
 3. 进入初读才读 `references/preparation.md` 和 `references/reading-inputs.md`。用 reading 固定辅助导出 v2 原文窗口及 reader 三部分正文；reader 全读并记笔记。收齐真实范围后用 synthesis 导出两个独立 summarizer：主体/事件提交不含 overview，概要提交 records=[]。单段 reader 原会话接续主体/事件，另派概要任务。两份分别 write，顺序不限；失败仅修该份，不回滚成功结果。均成功、主读实际读全且问题明确处置后，查询正式概要作为下游共同背景及完整共用身份。
-4. 按不重叠条款批次派 tagger，参见 `references/tagging.md`。主会话逐文件 `write` 标签修订及无匹配缺口。
-5. 运行 `group` 导出逐字分组；按 `references/handoff.md` 写完整任务及输入清单，派发首先列出负责条款及全部规定的完整提取责任。任务 `unit_id` 仅提供分组上下文，不限制输出关系的单元；比较负责条款集合，保证每条款只有一个完整提取责任。冻结词表和共用对象完整查询结果供 extractor 读取，多标签副本只作上下文。
+4. 按不重叠条款批次，用 `prepare_task.py tagging` 准备 tagger 输入与派发正文，调用见 `references/handoff.md`，分类职责见 `references/tagging.md`。主会话逐文件 `write` 标签修订及无匹配缺口。
+5. 运行 `group` 导出逐字分组；按 `references/handoff.md` 指定责任计划，用 `prepare_task.py extraction` 导出完整任务及输入清单。派发首先列出负责条款及全部规定的完整提取责任。任务 `unit_id` 仅提供分组上下文，不限制输出关系的单元；比较负责条款集合，保证每条款只有一个完整提取责任。冻结词表和共用对象完整查询结果供 extractor 读取，多标签副本只作上下文。
 6. 按完整条款主责派 extractor 并行提取，参见 `references/extraction.md`。extractor 先识别规定、主体及完整限制，再选单元/适用槽并组织 JSON；不得假定其他 extractor 会提取本条款的剩余规定。每个 extractor 保存一份完整 `extraction` JSON，并返回路径、负责条款、数量与问题摘要。
 7. 主会话读取摘要及提交文件的 `issues`，按下节处理明确问题，再每份文件调用一次 `write`。失败将具体 code/path 和必要版本交原 sub-agent 修正整份文件；成功保存回执。
 8. 运行 `reconcile`。按报告用既有 `write` 修正或撤销，再重新对账；报告有 errors 时如实交接未完成。
 
 ## 三部分派发及固定构造
 
-reading、synthesis、tagging、extraction 固定准备辅助输出 task_file、instructions_file、binding_file、output_file。主会话直接交付完整 instructions 正文，并在第三部分补业务关注和实际授权；第一部分固定角色、第二部分共同目标、第三部分个别范围及文件白名单。模板、管理 manifest、安装与机器快照不是全部角色的必读清单；任务说明已交付后不重复要求打开。
+reading、synthesis、tagging、extraction 成功回执的 `result.tasks` 逐项给出 task_file、instructions_file、binding_file、output_file。前三项是程序已生成的文件（reader 的 binding_file 为 null）；output_file 是角色后续应生成的产物路径，此时尚不存在。主会话按回执直接读取 instructions_file，交付完整正文，并在第三部分补业务关注和实际授权；第一部分固定角色、第二部分共同目标、第三部分个别范围及文件白名单。模板、管理 manifest、安装与机器快照不是全部角色的必读清单；任务说明已交付后不重复要求打开。
 
-reader 直接交 Markdown。两个 summarizer 分别使用 summarizer.md、summarizer-overview.md；后续 tagger/extractor 的共同背景直接取正式 overview.body，并标记 overview_id/文本版本，不重新摘要。共用身份保持完整记录和出处。固定绑定只交给实际构造程序，角色使用同版 complete_task.py，填写业务记录/概要正文、显式 issues；extractor 自行明确覆盖清单。find_quote 和 clause_revision 继续处理精确锚及固定修订字段。
+reader 直接交 Markdown。程序分别从本 skill 的 `templates/summarizer.md`、`templates/summarizer-overview.md` 生成两个 summarizer 的派发正文；主会话无需寻找、传入或重新展开模板。后续 tagger/extractor 的共同背景直接取正式 overview.body，并标记 overview_id/文本版本，不重新摘要。共用身份保持完整记录和出处。固定绑定只交给实际构造程序，角色使用同版 complete_task.py，填写业务记录/概要正文、显式 issues；extractor 自行明确覆盖清单。find_quote 和 clause_revision 继续处理精确锚及固定修订字段。
 
 主会话统一调用正式 CLI；子任务不访问库、正式命令、其他并行任务或实现。角色名 reader、summarizer、tagger、extractor，同类加数字，署名由绑定明确指定。缺材料由主会话补交白名单，已授权原文可定向回读，纠错交原任务，不新增 fixer/reviewer 或全量互查。
 
