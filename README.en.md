@@ -23,7 +23,7 @@ For a fuller explanation, see [An Engineering Approach to Representing Legal Rel
 - **Contract materials**: one contract and its constituent documents, such as the main agreement, appendices, and supplemental agreements.
 - **A reviewed vocabulary**: the categories of legal relationships, the information to record, and the conventions for expressing it. Users can prepare the vocabulary themselves or derive and review it using this project's initialization skill.
 - **Conversion configuration**: when working with Word documents, PDFs, or scans, an explicitly selected conversion program and instructions for invoking it.
-- **A working directory**: a location for contract data. Further work on the same contract uses the existing directory.
+- **Workspace configuration**: register a contract output root and available vocabularies for the directory opened in the agent session. New cases use these defaults, with explicit overrides for the current task. Further work on the same contract uses its existing directory.
 
 ### What You Receive
 
@@ -82,7 +82,7 @@ Installation creates independent copies of the CLIs, skills, reference materials
 
 The project provides an [example vocabulary](vocab/vocabulary.json) derived from 22 contract documents using this tool. It contains 14 units and 96 slots, illustrating the vocabulary structure and offering a starting point for adaptation. Check its suitability for your particular contract before use.
 
-The example is included in the complete `v0.1.5` source at `vocab/vocabulary.json` and can also be [downloaded separately as JSON](https://raw.githubusercontent.com/lukeruc/cogengine-legal/v0.1.5/vocab/vocabulary.json). Copy the file to your vocabulary working directory and supply its absolute path when ingesting a contract.
+The example is included in the complete `v0.1.5` source at `vocab/vocabulary.json` and can also be [downloaded separately as JSON](https://raw.githubusercontent.com/lukeruc/cogengine-legal/v0.1.5/vocab/vocabulary.json). Save it in your vocabulary working directory, then register it in the workspace's vocabulary list as described below. The installer does not automatically make this example the default.
 
 ## Getting Started
 
@@ -99,9 +99,11 @@ Please install and configure cogengine-legal for me. Project URL: https://github
 - **Python 3.11, 3.12, or 3.13**, with `sqlite3`, `venv`, and pip. Building also requires `setuptools>=68` and `wheel`.
 - **An agent host that can run skills**: it must be able to read complete skill directories and their referenced files, run local commands, organize subtasks, and receive human feedback through files.
 - **An appropriate, approved vocabulary**. A vocabulary is required before contract ingestion. If none is available, use `legal-initialize` to derive and review one after installation and skill registration. The user assigns materials to vocabulary induction or acceptance testing.
-- **Document conversion programs and their configuration**. Word, PDF, and OCR conversion is provided by external programs; supported file formats depend on the programs configured.
+- **Conversion programs and configuration when needed**. Word, PDF, and OCR conversion is provided by external programs; supported file formats depend on the programs configured.
 
 The core Python software has no third-party runtime dependencies. The agent host, model, and external converters must be supplied separately.
+
+UTF-8 files without a BOM can be processed directly when their extension is `.md`, `.markdown`, or `.txt` (case insensitive). DOCX files, PDFs, and scans require an explicitly configured converter; the agent reports missing configuration. An explicit conversion configuration takes priority when provided. Installing this project does not install converters.
 
 ### 2. Install the Software and Register the Skills
 
@@ -124,23 +126,53 @@ The installer creates or reuses `.venv` under the installation root, installs th
 
 `"host_registration":"pending"` in a successful installation receipt means that host registration still needs to be completed. See the [installation and usage guide](src/README.md) (in Chinese) for detailed steps, path binding, and troubleshooting.
 
-### 3. Process Your First Contract
+### 3. Configure the Workspace and Default Vocabulary
 
-After registration, with the vocabulary and conversion configuration ready, give the agent a request such as the following, replacing the paths with actual file locations:
+**The workspace is the directory opened in the agent session.** It may differ from the locations of the original contract, the installation, and the contract outputs. Changing the shell directory during a task does not change the workspace.
+
+The installer creates an empty configuration in `<install-root>/workspaces.json`. Before creating the first case, register the workspace, its contract output root, and its vocabulary path list. You can ask the agent to do this:
 
 ```text
-Use legal-case to ingest the following materials as one contract:
+Configure cogengine-legal for the workspace opened in this session:
+Installation directory: /absolute/path/to/legal-install
+Contract output root: /absolute/path/to/contracts
+Register /absolute/path/to/vocabularies/construction-v1.json as the default vocabulary.
+Preserve any existing registrations for other workspaces and vocabularies.
+```
 
-Original contract: /absolute/path/to/contract.docx
-Appendix: /absolute/path/to/appendix.pdf
-Approved vocabulary: /absolute/path/to/vocabulary.json
-DOCX conversion configuration: /absolute/path/to/docx-converter.json
-PDF conversion configuration: /absolute/path/to/pdf-converter.json
-Contract working root: /absolute/path/to/contracts
+Each workspace uses a UTF-8 plain-text list under `<install-root>/vocabularies/`, referenced by `workspaces.json`. For example, `vocabularies/workspace-1.txt`:
 
+```text
+/absolute/path/to/vocabularies/construction-v1.json
+/absolute/path/to/vocabularies/supply-v1.json
+```
+
+**Use one absolute vocabulary file path per line. The first nonblank line is the default.** The vocabulary files can live outside the installation directory; the list only records their paths. Edit it directly or explicitly ask the agent to make a change:
+
+| Action | Method and Effect |
+|---|---|
+| Register another vocabulary | Append its absolute path. The first entry in an empty list becomes the default. |
+| Change the default | Move the desired path to the first nonblank line. |
+| Use another vocabulary for one task | Specify an already registered absolute path in the ingestion request. The list order stays unchanged. |
+| Remove a registration | Delete its line; the vocabulary file remains. Removing the default makes the next entry the default. |
+| Revise and use a vocabulary | `legal-vocab` creates a separate file and preserves the original. Explicitly request registration of the new file, and a change of default if wanted. |
+
+Do not include comments, quotes, relative paths, `~`, environment variables, or duplicate paths. Unregistered files are not selected automatically. An invalid default produces an error rather than silently selecting the next entry.
+
+**New cases copy and freeze the selected vocabulary. Existing cases keep their frozen version.** Changing the default does not change existing cases; software upgrades preserve workspace configuration and vocabulary lists. If you do not yet have a vocabulary, use `legal-initialize` to create and review one, then register it. See [installation step 4](src/README.md#第四步配置工作区与默认词表) for the complete configuration example (in Chinese).
+
+### 4. Process Your First Contract
+
+Once configured, a request usually only needs to identify the contract materials:
+
+```text
+Use legal-case to create a new case for /absolute/path/to/contract.md,
+using this workspace's default vocabulary and contract output root.
 Return the contract working directory, database path, reconciliation results
 for this run, and any unfinished work.
 ```
+
+List any appendices or supplemental agreements as well, and supply the appropriate conversion configuration for DOCX/PDF materials. To override a default for this task, provide the absolute path of a registered vocabulary or a different contract output root. To resume an existing case, provide its original contract working directory.
 
 Following the skill, the agent creates the contract working directory, prepares the materials, organizes reading and extraction, and uses the CLI to validate and write the results. After handover, you can ask the agent to query a party's obligations, conditions, and supporting text. Developers can also call the CLI directly; query parameters are documented in the [case CLI reference](src/references/case-cli.md).
 
@@ -161,17 +193,10 @@ The project essays are available in both languages. The installation guide, skil
 | Understand the project's ideas and technical approach | [An Engineering Approach to Representing Legal Relationships](docs/legal-relations-engineering.en.md) · [中文](docs/legal-relations-engineering.md) |
 | Understand the project from a legal practitioner's perspective | [An Engineering Approach to Representing Legal Relationships (Lawyers' Edition)](docs/legal-relations-engineering-for-lawyers.en.md) · [中文](docs/legal-relations-engineering-for-lawyers.md) |
 | Install, register, upgrade, and troubleshoot | [Installation and usage guide](src/README.md) |
+| Manage workspaces and default vocabularies | [Configuration and path list examples](src/README.md#第四步配置工作区与默认词表) |
 | Look up commands and input/output formats | [Case CLI](src/references/case-cli.md) · [Vocabulary CLI](src/references/vocab-cli.md) · [Preprocessing CLI](src/references/preprocess-cli.md) · [Data formats](src/references/data-formats.md) |
 | Browse public documentation | [Documentation index](docs/README.md) |
 
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-
-UTF-8 text without BOM (.md/.txt/.markdown, case insensitive) can be received without an external converter. Explicit configurations take priority. DOCX/PDF/scans still require a configured converter; the agent reports affected materials and missing configuration to the user. Installing the core does not install conversion engines.
-
-## Workspace configuration and task handoff
-
-The installer creates an empty workspaces.json and preserves it and vocabularies/ on upgrades. Register the session workspace, contract output root and UTF-8 vocabulary path list; its first nonblank absolute path is the default. Governance produces a separate file and does not register it automatically.
-
-Host preparation uses scripts/prepare_task.py; file-only task completion uses skills/legal-case/scripts/complete_task.py. Dispatch has three sections. Two independent preparation tasks produce formal subjects/events and the overview; both must be written successfully before tagging. Install matching program and skill resources before using v2 task exports.

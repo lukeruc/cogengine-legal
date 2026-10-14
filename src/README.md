@@ -2,7 +2,7 @@
 
 当前发行版本：`0.1.5`。GitHub 仓库的 `src/` 是完整交付源码目录，包含一个 Python 包、三个命令、四个 skill、共用说明及安装脚本。本项目为一份特定合同建立带原文出处的 SQLite 记录；合同数据不放在程序安装目录。
 
-完整发行源码还包含仓库根目录下的 [词表示例](https://github.com/lukeruc/cogengine-legal/blob/v0.1.5/vocab/vocabulary.json)。使用时将其复制到自己的词表工作目录，并向入库 skill 提供该文件路径；词表作为独立数据使用。
+完整发行源码还包含仓库根目录下的 [词表示例](https://github.com/lukeruc/cogengine-legal/blob/v0.1.5/vocab/vocabulary.json)。使用时将其复制到自己的词表工作目录，再按第四步登记。安装程序不会自动将其设为默认词表。
 
 ## 安装前准备
 
@@ -21,6 +21,8 @@ PYTHON_BIN="/absolute/path/to/python"
 ```
 
 若仅缺构建工具，先为**选定的构建解释器**安装 `setuptools>=68` 和 `wheel`；这是构建依赖，不是本项目的核心运行依赖。真实 DOCX、PDF、OCR 转换程序及其依赖另行配置，安装本项目不会自动取得这些转换能力。
+
+UTF-8 且无 BOM 的 `.md`、`.markdown`、`.txt` 文件无配置时可直接接收，后缀大小写不敏感。显式提供转换配置时优先使用该配置，失败不会静默改用直通。DOCX/PDF/扫描件缺少适用转换器时，agent 报告受影响材料及需补充的配置。
 
 ## 第一步：构建 wheel
 
@@ -59,17 +61,23 @@ WHEEL_FILE="/absolute/path/to/legal-dist/cogengine_legal-0.1.5-py3-none-any.whl"
 ```text
 <install-root>/
   README.md                    安装维护说明，skill 运行不读取
-  runtime.json
+  runtime.json                 工具及专用环境信息
+  workspaces.json              工作区、合同工作根和词表列表的对应关系
+  vocabularies/
+    workspace-1.txt             用户创建的词表路径列表，首个非空行默认
   .venv/
   scripts/
     verify_registration.py
+    prepare_task.py            主会话的启动、建案和材料准备入口
   skills/
     legal-case/
       SKILL.md
       scripts/find_quote.py
       scripts/build_submission.py
+      scripts/complete_task.py
+      references/startup.md
       references/helper-tools.md
-      templates/               reader、summarizer、tagger、extractor 的发派模板
+      templates/               各角色模板，含两种 summarizer 分工
       examples/                文件构造样例及虚构夹具
     legal-vocab/SKILL.md
     legal-preprocess/SKILL.md
@@ -104,6 +112,54 @@ INSTALL_ROOT="/absolute/path/to/legal-install"
 
 核对脚本确认四个入口都指向同一安装根，所需共享说明齐全，安装信息中的三个命令存在并能执行帮助。成功时返回 `"host_registration":"verified"`。若宿主通过非文件路径机制注册，须用该宿主自己的方式验证同等条件；不能仅凭程序安装回执宣称四个 skill 已可用。
 
+## 第四步：配置工作区与默认词表
+
+工作区取 **agent 会话打开的目录**，按绝对路径匹配；合同原件位于哪里、后续 shell 切到哪里，都不改变这个值。一个安装可以登记多个工作区，每个工作区指定自己的合同工作根和词表列表。
+
+安装程序初次生成的 `<install-root>/workspaces.json` 为 `{"format_version":1,"workspaces":[]}`。用户可直接编辑，也可明确要求 agent 代为配置。例如，假设安装根是 `/home/user/legal-install`、会话打开的是 `/home/user/legal-work`：
+
+```json
+{
+  "format_version": 1,
+  "workspaces": [
+    {
+      "workspace_root": "/home/user/legal-work",
+      "contract_root": "/home/user/legal-work/contracts",
+      "vocabulary_list": "/home/user/legal-install/vocabularies/legal-work.txt"
+    }
+  ]
+}
+```
+
+将示例路径换成实际绝对路径。已有配置时在 `workspaces` 数组中增加或修改对应项，保留其他工作区；不要为同一工作区重复登记。字段含义如下：
+
+| 字段 | 含义 |
+|---|---|
+| `workspace_root` | 会话打开的工作区目录，必须已存在。 |
+| `contract_root` | 新合同工作目录的默认父目录，可在建案时创建；本次任务可明确指定其他位置。 |
+| `vocabulary_list` | 该工作区的词表路径列表文件，必须放在本安装的 `vocabularies/` 内。 |
+
+创建上例中的 `vocabularies/legal-work.txt`，用 UTF-8 保存，每行只填一个词表文件的绝对路径：
+
+```text
+/home/user/legal-work/vocabularies/construction-v1.json
+/home/user/legal-work/vocabularies/supply-v1.json
+```
+
+词表本身可放在安装目录之外。**首个非空行是默认词表**，上例默认为 `construction-v1.json`。列表允许空白行和 LF/CRLF 换行；不支持注释、引号、`~`、变量、相对路径或重复路径。路径中的空格按实际文件名保留，不要为了缩进而添加空格。
+
+日常管理只需编辑这份列表：
+
+- **新增**：把另一份词表的绝对路径追加到末尾。空列表的第一项自然成为默认。
+- **切换默认**：把所需路径移到第一个非空行。
+- **仅本次换用**：在请求中指定另一份已登记词表的绝对路径，列表顺序保持不变。
+- **取消登记**：删除对应行，不删除词表文件；删除第一项后，下一项成为默认。
+- **治理更新**：`legal-vocab` 保留原文件并生成独立新文件；只有明确要求才登记新文件，只有明确要求才调整默认顺序。
+
+新案只加载所选词表，复制到合同工作目录并在初始化时冻结。未登记文件不会自动选用，默认文件失效不会自动跳到下一项。缺少配置时，agent 报告具体缺项，不搜索目录猜测。
+
+程序升级保留 `workspaces.json` 和 `vocabularies/`。旧案件继续使用自己的冻结词表，不因列表变动而更新；续做旧案不要求重新配置当前默认词表。尚无词表时，可先用 `legal-initialize` 归纳并审定，再登记；独立预处理也不需要默认词表。完整调用约定见 [启动与准备说明](skills/legal-case/references/startup.md)。
+
 ## 运行时如何找到命令
 
 安装和运行时涉及的路径各有起点：
@@ -113,26 +169,16 @@ INSTALL_ROOT="/absolute/path/to/legal-install"
 | `SOURCE_ROOT/src/scripts/` | 下载的源码根目录，用于构建、安装 |
 | `<install-root>/` | 安装后的 `runtime.json`、环境、skill、共用资料与脚本副本 |
 | `<install-root>/scripts/verify_registration.py` | 安装后的注册核对脚本，使用该安装的 Python 执行 |
+| `<install-root>/scripts/prepare_task.py` | 主会话的固定准备入口，处理运行信息、工作区选择和任务材料导出 |
+| `<install-root>/workspaces.json`、`vocabularies/` | 用户管理的工作区配置与词表路径列表，与 `runtime.json` 分开保存 |
 | 宿主提供的 `SKILL.md` 路径 | 可能经过符号链接，先解析为真实文件路径，再取父目录 |
 | skill 中的 `../../runtime.json` 等资料路径 | 以该 `SKILL.md` 的真实目录为基准 |
 | 共用 CLI 说明中的 `../runtime.json` | 以该说明文件的真实目录 `<install-root>/references/` 为基准 |
 | 合同工作目录 | 业务命令的工作目录及合同数据存放位置 |
 
-例如，定位 `legal-case` 的安装信息时，将占位路径替换为宿主实际提供的入口路径：
+各 skill 的“固定启动”片段先解析宿主入口的符号链接，再从确定的安装位置调用 `scripts/prepare_task.py runtime`。该辅助程序读取并核验运行信息，返回安装根、专用 Python、三个命令及工作区配置文件的绝对路径。主会话使用成功回执进入当前阶段，无需列举安装目录、查找 README 或重复检查同一批路径。
 
-```python
-from pathlib import Path
-
-skill_dir = Path("/host/skills/legal-case/SKILL.md").resolve(strict=True).parent
-install_root = skill_dir.parent.parent
-runtime_path = install_root / "runtime.json"
-print(runtime_path)
-print(install_root / "references")
-```
-
-先解析符号链接，再取父目录，才能从宿主入口回到安装根。后续读取使用示例输出的绝对路径。每个 skill 中的 `../../runtime.json` 和 `../../references/` 均以 `skill_dir` 为基准，与 shell 当前工作目录无关。运行所需规则写在 skill 与配套参考资料中。
-
-`runtime.json` 顶层恰有 `format_version`、`release_version`、`install_root`、`environment_root`、`python`、`commands`；`commands` 恰含 `legal-case`、`legal-vocab`、`legal-preprocess`。skill 检查版本、真实安装根、`.venv` 及可执行文件后，按参数数组执行所需命令的绝对路径，例如：
+`runtime.json` 顶层恰有 `format_version`、`release_version`、`install_root`、`environment_root`、`python`、`commands`；`commands` 恰含 `legal-case`、`legal-vocab`、`legal-preprocess`。核验后按参数数组执行所需命令的绝对路径，例如：
 
 ```text
 argv = [runtime.commands["legal-case"], "query", "--db", "/absolute/contract.sqlite", "--view", "progress"]
@@ -141,7 +187,7 @@ cwd  = "/absolute/contract-work-directory"
 
 因此无须激活环境、设置 `PYTHONPATH`，也无须让宿主切换 Python。相对输入先按用户原工作目录解析；传给 CLI 的合同工作副本路径使用绝对路径。含空格或中文的路径是单个参数，不把整条调用拼成 shell 字符串。安装信息缺失、根路径不符或命令失效时，skill 应报告安装问题，不能改用 PATH 上的同名工具。
 
-入库 skill 的两个辅助脚本随完整目录安装，共用模块随 wheel 装入同一环境。主会话将 runtime.python、脚本和任务文件的绝对路径交给 sub-agent，按需运行精确引句定位或提交组装；用法见 [辅助脚本说明](skills/legal-case/references/helper-tools.md)。脚本只处理文件，不访问数据库，生成成功不表示正式写入成功。runtime 的 commands 保持三个正式 CLI。
+入库 skill 的 `find_quote.py`、`build_submission.py` 和 `complete_task.py` 随完整目录安装，共用模块随 wheel 装入同一环境。主会话交付专用 Python、脚本和任务文件的绝对路径及适用说明；sub-agent 按需调用精确引句定位、固定字段修订及提交构造。用法见 [辅助脚本说明](skills/legal-case/references/helper-tools.md)。这些辅助脚本只处理文件，正式写入和数据库操作由主会话完成。runtime 的 commands 保持三个正式 CLI。
 
 已有安装要采用这次源码变更时，重新构建 wheel，再用安装命令的 `--upgrade` 更新程序及 skill。安装脚本默认复用同版本程序；即使版本号相同，更新源码构建的程序副本也要使用 `--upgrade`，否则新脚本可能缺少对应共用模块。
 
@@ -157,33 +203,30 @@ cwd  = "/absolute/contract-work-directory"
 
 ## 合同数据放在哪里
 
-新合同首次入库时，案件 skill 在调用方指定的工作根下创建唯一的 `contract-YYYYMMDDTHHMMSSZ[-NN]` 目录，将合同原件、词表和转换配置的工作副本放入其中，并在根部创建 `contract.sqlite`。转换结果、任务、提交文件、回执、分组与报告也保存在该目录。同一合同后续工作沿用原目录，不重复安装程序或建立 Python 环境。具体组织和命名见[案件命令说明](references/case-cli.md#入库文件位置和命名)。
+新合同首次入库时，案件 skill 使用已登记的合同工作根（或本次明确指定的工作根），创建唯一的 `contract-YYYYMMDDTHHMMSSZ[-NN]` 目录，将合同原件、选中词表和转换配置的工作副本放入其中，并在根部创建 `contract.sqlite`。转换结果、任务、提交文件、回执、分组与报告也保存在该目录。同一合同后续工作沿用原目录，不重复安装程序或建立 Python 环境。具体组织和命名见[案件命令说明](references/case-cli.md#入库文件位置和命名)。
 
 ## 重装、升级与常见问题
 
 | 情况 | 处理 |
 |---|---|
 | 同一版本再次安装 | 使用相同命令与安装根；脚本核验并复用已有环境。 |
-| 明确升级到新版 | 从新版完整交付构建 wheel，安装命令加 `--upgrade`，并重新核对四个 skill 的注册。CLI、skill 和说明须属于同一交付版本。 |
+| 明确升级到新版 | 从新版完整交付构建 wheel，安装命令加 `--upgrade`，并重新核对四个 skill 的注册。CLI、skill 和说明须属于同一交付版本；已有工作区配置和词表列表保留。 |
 | 本项目 `.venv` 损坏 | 在明确的安装操作中加 `--repair`；脚本只重建带本项目标记的环境。跨版本修复还需加 `--upgrade`。 |
 | 需要把交付移到新位置 | 复制完整交付源码，在一个新的空安装根重新安装，并更新宿主注册；旧 `.venv` 和 `runtime.json` 的绝对路径不能直接沿用。 |
 | `runtime.json` 缺失或根路径不符 | 停止业务调用；缺失时在原安装根重新执行显式安装，根路径不符时使用新的空安装根。不要在合同目录建环境或改用系统 PATH 中的命令。 |
 | 已安装却找不到说明中的相对路径 | 核对是否注册了安装后的 skill，是否先解析了宿主入口的符号链接，以及是否按说明文件所在目录解析相对引用。 |
 | 宿主只能复制单个 `SKILL.md` | 该方式无法访问共用说明和安装信息，不能视为完整注册；改用能保留目录关系的宿主机制。 |
+| 新案提示工作区未登记 | 在 `workspaces.json` 登记会话打开的目录；合同文件所在目录不能代替会话工作区。 |
+| 词表未登记、列表为空或默认词表失效 | 按第四步补全列表或修正选中路径；不要依赖自动搜索或跳选。 |
+| 治理生成新版词表后仍使用旧版 | 新文件不会自动登记或变成默认；明确要求登记，并按需调整列表顺序。旧案件的冻结词表保持不变。 |
 | 未配置 DOCX/PDF/OCR 转换程序 | 在需要转换时提供符合[预处理说明](references/preprocess-cli.md)的外部程序配置；案件和词表的 JSON/SQLite 操作仍可用。 |
 
-安装与修复只作用于安装根。用户的合同工作目录、全局词表和独立转换器配置是单独资产。
+安装与修复只作用于安装根。用户的合同工作目录、独立词表文件和转换器配置是单独资产。仅更新下载源码不会更新已有安装副本。
 
 ### 角色派发与文件构造
 
-legal-case 随安装复制 `templates/reader.md`、`summarizer.md`、`tagger.md`、`extractor.md`，以及 `examples/` 中四份可调用样例与虚构夹具。主会话按角色原样带入固定内容，填实本次任务要求和路径；sub-agent 不需源码或 README 来猜用法。已有安装仍须重新构建 wheel 并以 `--upgrade` 更新，同一版本号也须替换包与配套 skill。
+legal-case 随安装复制 `templates/reader.md`、`summarizer.md`、`summarizer-overview.md`、`tagger.md`、`extractor.md`，以及 `examples/` 中的构造样例与虚构夹具。主会话通过 `prepare_task.py` 导出材料，交付固定角色信息、共享任务上下文、个别任务要求三部分正文。各角色只取得完成任务所需的文件和用法，不需读取源码或 README。
 
-同一专用解释器中的 `legal.reader_helpers` 提供 read_json/read_text/write_json、quote_from_span、ref/source/evidence、record/node/relation/reference/detail、clause_revision、header/assemble。用法和失败处理见 legal-case 的 `references/helper-tools.md`；两个文件脚本参数继续兼容。构造仅处理已交付文件和普通内存数据，法律判断与覆盖声明由相应角色给出，正式写入仍由主会话完成。
+reader 交阅读笔记。随后两个 summarizer 分别输出主体／事件和案件概要，主会话分别写入，两份均成功后再交接打标。后续角色直接使用正式概要作为共同背景。新初读和打标任务导出使用 v2；恢复旧任务时重新导出适用材料，保留旧库和旧任务文件。
 
-Markdown/TXT/Markdown 后缀材料（.md/.txt/.markdown，大小写不敏感）无配置时可直接接收，要求 UTF-8 且无 BOM，不需要外部转换器。DOCX/PDF/扫描件仍需显式配置适用转换器；缺少时 agent 应说明受影响材料和需补配置。显式配置优先，失败不静默改用直通。安装本项目不会自动安装转换引擎。
-
-## 工作区配置与固定交接
-
-安装后 workspaces.json 初始为空；按会话打开目录登记 workspace_root、contract_root、vocabulary_list。列表在安装 vocabularies 下，每行一个词表绝对路径，首个非空项默认。升级保留这两类用户配置，治理结果仅在明确要求后登记。完整格式见 skills/legal-case/references/startup.md（根 README 对应 src/skills 路径）。
-
-主会话使用 scripts/prepare_task.py，子任务使用 skills/legal-case/scripts/complete_task.py；后者只处理文件。角色派发为三部分，初读两份独立 summarizer 提交分别负责主体/事件和概要，均成功才交接打标。任务导出 v2 与旧 v1 分开，恢复需重新导出有效成果，不覆盖旧库。更新安装包和全部 skill 后再使用新辅助；仅更新源码不改变已有安装副本。
+结果构造使用主会话预填的绑定和 `complete_task.py`；同一专用环境中的 `legal.reader_helpers` 继续提供序列化、引用、出处、条款修订和组装函数。角色填写判断、依据、正文和明确的完成声明，正式写入仍由主会话完成。文件生成成功不表示已入库或语义完整。

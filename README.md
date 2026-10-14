@@ -23,7 +23,7 @@
 - **合同材料**：一份合同及其组成文件，例如正文、附件和补充协议。
 - **经审定的词表**：约定法律关系的类别、需要记载的事项及其表达方式。词表由使用者准备，也可以通过本项目的初始化 skill 归纳并审定。
 - **转换配置**：需要处理 Word、PDF 或扫描件时，明确指定实际转换程序及其调用方式。
-- **工作目录**：指定合同数据的存放位置；同一合同后续处理沿用原有目录。
+- **工作区配置**：为 agent 会话打开的目录登记合同工作根和可用词表；新合同使用默认配置，也可在本次任务中明确选择其他已登记词表或工作根。同一合同后续处理沿用原有目录。
 
 ### 会得到什么
 
@@ -82,7 +82,7 @@
 
 项目提供一份通过本工具从 22 份合同语料归纳形成的[词表示例](vocab/vocabulary.json)，包含 14 个单元、96 个槽，可用于了解词表结构，并作为自行调整的起点。使用前应结合具体合同核对其适用范围。
 
-词表示例随 `v0.1.5` 的完整源码提供，位于 `vocab/vocabulary.json`，也可[单独下载 JSON](https://raw.githubusercontent.com/lukeruc/cogengine-legal/v0.1.5/vocab/vocabulary.json)。将文件复制到自己的词表工作目录，在入库时提供该文件的绝对路径。
+词表示例随 `v0.1.5` 的完整源码提供，位于 `vocab/vocabulary.json`，也可[单独下载 JSON](https://raw.githubusercontent.com/lukeruc/cogengine-legal/v0.1.5/vocab/vocabulary.json)。将文件保存到自己的词表工作目录，再按下文登记到工作区的可用词表列表。安装程序不会自动将该示例设为默认词表。
 
 ## 如何开始使用
 
@@ -99,9 +99,11 @@
 - **Python 3.11、3.12 或 3.13**，带有 `sqlite3`、`venv` 和 pip；构建还需要 `setuptools>=68` 与 `wheel`。
 - **能够运行 skill 的 agent 宿主**：支持读取完整 skill 目录及其引用文件、运行本地命令、组织子任务，并支持通过文件接收人工意见。
 - **适用的正式词表**。合同入库前需要具备词表；尚无词表时，可在完成安装和 skill 注册后，通过 `legal-initialize` 归纳并审定。归纳与验收材料的用途由使用者指定。
-- **实际文档转换程序及配置**。Word、PDF、OCR 的转换能力由外部程序提供，具体支持的文件格式取决于所配置的程序。
+- **需要转换时的实际程序及配置**。Word、PDF、OCR 的转换能力由外部程序提供，具体支持的文件格式取决于所配置的程序。
 
 核心 Python 程序没有第三方运行依赖。agent 宿主、模型和外部转换程序需另行准备。
+
+UTF-8 且无 BOM 的 `.md`、`.markdown`、`.txt` 文件可直接处理，后缀大小写不敏感；DOCX、PDF、扫描件需显式配置转换器，缺少时 agent 会报告所需配置。显式提供的转换配置优先使用。安装本项目不会自动安装转换器。
 
 ### 2. 安装程序并注册 skill
 
@@ -124,22 +126,52 @@ INSTALL_ROOT="/absolute/path/to/legal-install"
 
 程序安装成功回执中的 `"host_registration":"pending"` 表示还需完成宿主注册。详细操作、路径绑定和故障处理见[安装与使用说明](src/README.md)。
 
-### 3. 处理第一份合同
+### 3. 配置工作区与默认词表
 
-完成注册并准备好词表（需转换时另备适用配置）后，可以向 agent 提供以下请求，将路径替换为实际文件位置：
+**工作区就是 agent 会话打开的目录**。它与合同原件所在目录、程序安装目录和合同产物存放位置可以不同；任务中切换 shell 目录不会改变工作区。
+
+安装程序在 `<install-root>/workspaces.json` 中创建空配置。首次新建合同前，需要登记工作区、合同工作根，以及该工作区的词表路径列表。可以让 agent 完成，例如：
 
 ```text
-请使用 legal-case，将以下材料作为一份合同入库：
-
-合同原件：/absolute/path/to/contract.docx
-附件：/absolute/path/to/appendix.pdf
-正式词表：/absolute/path/to/vocabulary.json
-DOCX 转换配置：/absolute/path/to/docx-converter.json
-PDF 转换配置：/absolute/path/to/pdf-converter.json
+请为当前会话打开的工作区配置 cogengine-legal：
+安装目录：/absolute/path/to/legal-install
 合同工作根目录：/absolute/path/to/contracts
+将 /absolute/path/to/vocabularies/construction-v1.json 登记为默认词表。
+如已有其他工作区配置或词表登记，请保留。
+```
 
+每个工作区对应一份保存在 `<install-root>/vocabularies/` 下的 UTF-8 纯文本列表，由 `workspaces.json` 指向。例如 `vocabularies/workspace-1.txt`：
+
+```text
+/absolute/path/to/vocabularies/construction-v1.json
+/absolute/path/to/vocabularies/supply-v1.json
+```
+
+**每行一个词表文件的绝对路径，第一个非空行就是默认词表。** 词表文件可以保存在安装目录之外；列表只记录路径。可直接编辑列表，也可以明确要求 agent 修改：
+
+| 操作 | 方法与结果 |
+|---|---|
+| 登记另一份词表 | 在列表末尾增加其绝对路径。空列表的第一项自然成为默认。 |
+| 切换默认词表 | 将所需路径移到第一个非空行。 |
+| 仅本次使用其他词表 | 在入库请求中指定已登记词表的绝对路径，不改变列表顺序。 |
+| 取消登记 | 删除对应行，词表文件仍保留；删除默认项后，下一项成为默认。 |
+| 治理并使用新版词表 | `legal-vocab` 生成独立新文件，保留原文件。需要使用新版时，明确要求登记；需要作为默认时，再明确要求调整顺序。 |
+
+列表不写注释、引号、相对路径、`~` 或环境变量，也不重复登记同一路径。未登记文件不会自动使用；默认词表失效时会报告问题，不自动改选下一项。
+
+**新案复制并冻结选中的词表，旧案继续使用原有冻结版本。** 调整默认项不改变已有案件；程序升级保留工作区配置及词表列表。尚无词表时，可以先使用 `legal-initialize` 生成并审定，再登记。完整配置示例见[安装说明第四步](src/README.md#第四步配置工作区与默认词表)。
+
+### 4. 处理第一份合同
+
+完成配置后，通常只需提供合同材料，例如：
+
+```text
+请使用 legal-case，为 /absolute/path/to/contract.md 建立一个新合同案件，
+使用当前工作区的默认词表和合同工作根目录。
 请返回合同工作目录、数据库路径、本轮对账结果和仍未完成的事项。
 ```
+
+有附件或补充协议时一并列出；DOCX/PDF 等材料另附适用转换配置。本次需要其他词表或产物位置时，明确给出已登记词表的绝对路径或本次合同工作根。续做已有合同则给出原合同工作目录。
 
 agent 会按 skill 建立合同工作目录、准备材料、组织阅读与提取，并通过 CLI 校验和写入。交接后，可继续要求 agent 查询该合同中某一方的义务、条件及原文依据；开发者也可以直接调用 CLI，查询参数见[案件命令说明](src/references/case-cli.md)。
 
@@ -158,17 +190,10 @@ agent 会按 skill 建立合同工作目录、准备材料、组织阅读与提�
 | 了解项目思路与技术原理 | [法律关系的工程化表达](docs/legal-relations-engineering.md) · [English](docs/legal-relations-engineering.en.md) |
 | 从法律工作的角度了解项目 | [法律关系的工程化表达（律师版）](docs/legal-relations-engineering-for-lawyers.md) · [English](docs/legal-relations-engineering-for-lawyers.en.md) |
 | 安装、注册、升级与故障处理 | [安装与使用说明](src/README.md) |
+| 管理工作区和默认词表 | [配置文件与路径列表示例](src/README.md#第四步配置工作区与默认词表) |
 | 查询命令与输入输出格式 | [案件 CLI](src/references/case-cli.md) · [词表 CLI](src/references/vocab-cli.md) · [预处理 CLI](src/references/preprocess-cli.md) · [数据格式](src/references/data-formats.md) |
 | 浏览对外文档 | [文档目录](docs/README.md) |
 
 ## 许可证
 
 本项目采用 [MIT 许可证](LICENSE)。
-
-Markdown/TXT/Markdown 后缀材料（.md/.txt/.markdown，大小写不敏感）无配置时可直接接收，要求 UTF-8 且无 BOM，不需要外部转换器。DOCX/PDF/扫描件仍需显式配置适用转换器；缺少时 agent 应说明受影响材料和需补配置。显式配置优先，失败不静默改用直通。安装本项目不会自动安装转换引擎。
-
-## 工作区配置与固定交接
-
-安装后 workspaces.json 初始为空；按会话打开目录登记 workspace_root、contract_root、vocabulary_list。列表在安装 vocabularies 下，每行一个词表绝对路径，首个非空项默认。升级保留这两类用户配置，治理结果仅在明确要求后登记。完整格式见 skills/legal-case/references/startup.md（根 README 对应 src/skills 路径）。
-
-主会话使用 scripts/prepare_task.py，子任务使用 skills/legal-case/scripts/complete_task.py；后者只处理文件。角色派发为三部分，初读两份独立 summarizer 提交分别负责主体/事件和概要，均成功才交接打标。任务导出 v2 与旧 v1 分开，恢复需重新导出有效成果，不覆盖旧库。更新安装包和全部 skill 后再使用新辅助；仅更新源码不改变已有安装副本。
