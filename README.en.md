@@ -140,12 +140,39 @@ Register /absolute/path/to/vocabularies/construction-v1.json as the default voca
 Preserve any existing registrations for other workspaces and vocabularies.
 ```
 
-Each workspace uses a UTF-8 plain-text list under `<install-root>/vocabularies/`, referenced by `workspaces.json`. For example, `vocabularies/workspace-1.txt`:
+You can also configure it manually. The example below assumes installation at `/home/user/legal-install` and an agent session opened at `/home/user/legal-work`. Replace these paths with the actual paths on your machine.
+
+**① Edit `/home/user/legal-install/workspaces.json` in the installation directory.** The installer creates it with an empty `workspaces` array. A configured example is:
+
+```json
+{
+  "format_version": 1,
+  "workspaces": [
+    {
+      "workspace_root": "/home/user/legal-work",
+      "contract_root": "/home/user/legal-work/contracts",
+      "vocabulary_list": "/home/user/legal-install/vocabularies/legal-work.txt"
+    }
+  ]
+}
+```
+
+| Field | What to Enter |
+|---|---|
+| `workspace_root` | The existing directory opened in the agent session, matched by its full path. |
+| `contract_root` | The default parent directory for contract outputs. Each new case gets its own `contract-...` directory beneath it. |
+| `vocabulary_list` | This workspace's vocabulary path list file, which must be under this installation's `vocabularies/` directory. |
+
+Use absolute paths throughout. One installation can serve multiple workspaces: add one entry per workspace to the `workspaces` array, preserving existing entries and avoiding duplicates. Use standard JSON without comments or trailing commas.
+
+**② Create `/home/user/legal-install/vocabularies/legal-work.txt`, as specified above.** Save it as UTF-8, for example:
 
 ```text
-/absolute/path/to/vocabularies/construction-v1.json
-/absolute/path/to/vocabularies/supply-v1.json
+/home/user/legal-work/vocabularies/construction-v1.json
+/home/user/legal-work/vocabularies/supply-v1.json
 ```
+
+Prepare the two vocabulary files at those paths. The configuration works as follows: open the session at `/home/user/legal-work` → match its entry in `workspaces.json` → read `legal-work.txt` → use the first entry, `construction-v1.json`, by default. New contract outputs go under `/home/user/legal-work/contracts/`. Once the files are saved, you can create a case without reinstalling the software.
 
 **Use one absolute vocabulary file path per line. The first nonblank line is the default.** The vocabulary files can live outside the installation directory; the list only records their paths. Edit it directly or explicitly ask the agent to make a change:
 
@@ -159,7 +186,7 @@ Each workspace uses a UTF-8 plain-text list under `<install-root>/vocabularies/`
 
 Do not include comments, quotes, relative paths, `~`, environment variables, or duplicate paths. Unregistered files are not selected automatically. An invalid default produces an error rather than silently selecting the next entry.
 
-**New cases copy and freeze the selected vocabulary. Existing cases keep their frozen version.** Changing the default does not change existing cases; software upgrades preserve workspace configuration and vocabulary lists. If you do not yet have a vocabulary, use `legal-initialize` to create and review one, then register it. See [installation step 4](src/README.md#第四步配置工作区与默认词表) for the complete configuration example (in Chinese).
+**New cases copy and freeze the selected vocabulary. Existing cases keep their frozen version.** Changing the default does not change existing cases; software upgrades preserve workspace configuration and vocabulary lists. If you do not yet have a vocabulary, use `legal-initialize` to create and review one, then register it. See [installation step 4](src/README.md#第四步配置工作区与默认词表) for further configuration and troubleshooting details (in Chinese).
 
 ### 4. Process Your First Contract
 

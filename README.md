@@ -140,12 +140,39 @@ INSTALL_ROOT="/absolute/path/to/legal-install"
 如已有其他工作区配置或词表登记，请保留。
 ```
 
-每个工作区对应一份保存在 `<install-root>/vocabularies/` 下的 UTF-8 纯文本列表，由 `workspaces.json` 指向。例如 `vocabularies/workspace-1.txt`：
+也可以手动配置。以下假设安装目录为 `/home/user/legal-install`，agent 会话打开的目录为 `/home/user/legal-work`；请将示例中的路径替换为本机实际路径。
+
+**① 编辑安装目录下的 `/home/user/legal-install/workspaces.json`。** 安装时该文件的 `workspaces` 数组为空，填写后例如：
+
+```json
+{
+  "format_version": 1,
+  "workspaces": [
+    {
+      "workspace_root": "/home/user/legal-work",
+      "contract_root": "/home/user/legal-work/contracts",
+      "vocabulary_list": "/home/user/legal-install/vocabularies/legal-work.txt"
+    }
+  ]
+}
+```
+
+| 字段 | 填什么 |
+|---|---|
+| `workspace_root` | agent 会话打开的目录，必须已经存在，按完整路径匹配。 |
+| `contract_root` | 新合同产物的默认父目录，每份合同在其下创建独立的 `contract-...` 目录。 |
+| `vocabulary_list` | 本工作区的词表路径列表文件，必须位于本安装目录的 `vocabularies/` 下。 |
+
+所有路径都填绝对路径。一个安装可服务多个工作区，在 `workspaces` 数组中为每个工作区增加一项即可；已有配置应保留，不重复登记同一工作区。配置使用标准 JSON，不添加注释或尾逗号。
+
+**② 创建上面指定的 `/home/user/legal-install/vocabularies/legal-work.txt`。** 用 UTF-8 保存，内容例如：
 
 ```text
-/absolute/path/to/vocabularies/construction-v1.json
-/absolute/path/to/vocabularies/supply-v1.json
+/home/user/legal-work/vocabularies/construction-v1.json
+/home/user/legal-work/vocabularies/supply-v1.json
 ```
+
+以上两份词表应已准备好并保存在对应路径。配置关系是：会话打开 `/home/user/legal-work` → 匹配 `workspaces.json` 中的这一项 → 读取 `legal-work.txt` → 默认选用第一行的 `construction-v1.json`，新合同产物放在 `/home/user/legal-work/contracts/` 下。保存配置后即可新建案件，无需重新安装程序。
 
 **每行一个词表文件的绝对路径，第一个非空行就是默认词表。** 词表文件可以保存在安装目录之外；列表只记录路径。可直接编辑列表，也可以明确要求 agent 修改：
 
@@ -159,7 +186,7 @@ INSTALL_ROOT="/absolute/path/to/legal-install"
 
 列表不写注释、引号、相对路径、`~` 或环境变量，也不重复登记同一路径。未登记文件不会自动使用；默认词表失效时会报告问题，不自动改选下一项。
 
-**新案复制并冻结选中的词表，旧案继续使用原有冻结版本。** 调整默认项不改变已有案件；程序升级保留工作区配置及词表列表。尚无词表时，可以先使用 `legal-initialize` 生成并审定，再登记。完整配置示例见[安装说明第四步](src/README.md#第四步配置工作区与默认词表)。
+**新案复制并冻结选中的词表，旧案继续使用原有冻结版本。** 调整默认项不改变已有案件；程序升级保留工作区配置及词表列表。尚无词表时，可以先使用 `legal-initialize` 生成并审定，再登记。更多配置及故障处理说明见[安装说明第四步](src/README.md#第四步配置工作区与默认词表)。
 
 ### 4. 处理第一份合同
 
