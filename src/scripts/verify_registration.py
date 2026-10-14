@@ -56,6 +56,10 @@ def main() -> int:
         for name in REFERENCES:
             if not (root / "references" / name).is_file():
                 raise ValueError(f"shared reference missing: {name}")
+        for relative in ("scripts/prepare_task.py", "skills/legal-case/scripts/complete_task.py",
+                         "skills/legal-case/templates/summarizer-overview.md"):
+            if not (root / relative).is_file():
+                raise ValueError(f"task resource missing: {relative}")
         for name, command in runtime["commands"].items():
             path = Path(command)
             if not path.is_absolute() or not path.is_file() or not os.access(path, os.X_OK) or not path.resolve().is_relative_to(environment.resolve()):

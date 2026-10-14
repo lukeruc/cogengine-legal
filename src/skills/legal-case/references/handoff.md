@@ -26,10 +26,12 @@ UUID示意值在实际文件中使用查询所得正式ID。unit_id在普通分�
 
 主会话在现有任务说明中交付 [helper-tools.md](helper-tools.md) 的用法、已核验 runtime.python、两个已安装辅助脚本及输入/输出的绝对路径；可将本说明作为已有 input_files 的资料，不增加任务字段。find_quote 使用完整 clauses 查询快照，不能使用分组摘要。两个工具按需处理文件；extractor 不调用正式 CLI 或数据库，需补 ID/原文由主会话交付。
 
-已有内部辅助`legal.handoff.export_extraction_tasks(db_path, plans, output_dir, resource_root, clause_ids=None)`可以完成此导出，不是新增CLI。用安装的共用解释器导入该函数；resource_root是已核验的安装根，output_dir是合同tasks下新的空子目录。plans各项包含task_id、unit_id、responsible_clauses、context_clauses、group_file、output_file；主会话自行选定主责，group_file指向合同groups中的正式导出。clause_ids省略表示全部当前文本条款，指定时表示本轮范围。函数比较负责集合、当前条款版本、分组和配置身份，保存完整输入及规范任务，返回路径和数据库提交序号；派发前如数据库已变，重新核对版本而不是继续使用陈旧任务。
+已有内部辅助`legal.handoff.export_extraction_tasks(db_path, plans, output_dir, resource_root, clause_ids=None, task_context_file=明确总体说明文件)`可以完成此导出，不是新增CLI。用安装的共用解释器导入该函数；resource_root是已核验的安装根，output_dir是合同tasks下新的空子目录。plans各项包含task_id、unit_id、responsible_clauses、context_clauses、group_file、output_file；主会话自行选定主责，group_file指向合同groups中的正式导出。clause_ids省略表示全部当前文本条款，指定时表示本轮范围。函数比较负责集合、当前条款版本、分组和配置身份，保存完整输入及规范任务，返回路径和数据库提交序号；派发前如数据库已变，重新核对版本而不是继续使用陈旧任务。
 
  extractor 返回`{task_id,output_file,responsible_clauses,record_counts,issues}`，responsible_clauses仍是对象／记录ID对清单。主会话读取摘要和提交文件中的issues，按 [SKILL.md](../SKILL.md#接收结果与明确问题) 处理已暴露的未完成或矛盾，再每份文件调用一次write并保存完整回执。声称其他任务或已有记录承载时须核对实际责任、具体记录及对应内容，不能只接受转交说明。真实限制保留原句、原因和影响，不要求issues为空；回执成功和机械覆盖不能代替原文语义验收。
 
-export_extraction_tasks 的 input_files 包含本角色 helper-tools、引句/提取样例及虚构夹具，不携带模板路径。主会话自行从安装资源展开 extractor 固定正文，第二部分列可读文件白名单（绝对路径、内容范围、用途、读取时机），保存实际派发；导出清单的资料可按需查阅，不是全部前置必读。完整负责条款、相关上下文、词表定义/槽/归属、概要及正式共享记录仍开始读取，不能为了少调用漏业务限制。数据格式/值类型/构造工具按具体用途查授权章节。
+export_extraction_tasks 的 input_files 包含本角色 helper-tools、引句/提取样例及虚构夹具，不携带模板路径。主会话自行从安装资源展开 extractor 固定正文，第三部分列可读文件白名单（绝对路径、内容范围、用途、读取时机），保存实际派发；导出清单的资料可按需查阅，不是全部前置必读。完整负责条款、相关上下文、词表定义/槽/归属、概要及正式共享记录仍开始读取，不能为了少调用漏业务限制。数据格式/值类型/构造工具按具体用途查授权章节。
 
 完整 clauses 快照可以授权公共匹配工具读取全部记录；模型阅读和完整提取责任仍限定任务条款及指定上下文。记录是 item.data，查询外层 evidence/provenance 不能混进 data，旧 ID/前驱保持。共享空 items 是明确结果，缺必需字段不兜底为空。辅助执行不授权读源码，文档链接不自动授权其他文件；缺材料/版本交主会话追加文件授权，同一交接留痕，不浏览别的任务补洞。
+
+当前主会话用 prepare_task extraction 固定导出，三部分 instructions 与只读 binding 经 input_files/返回表交付，任务 JSON 的既有字段不变。正式 overview.body 原样成为共同背景，注明身份/文本版本；完整共享对象不按关键词筛选。角色通过 complete_task 固定入口提交，覆盖声明由本人明确给出。

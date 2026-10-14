@@ -1,12 +1,12 @@
 # 法律关系建模工具：安装与使用
 
-当前发行版本：`0.1.4`。GitHub 仓库的 `src/` 是完整交付源码目录，包含一个 Python 包、三个命令、四个 skill、共用说明及安装脚本。本项目为一份特定合同建立带原文出处的 SQLite 记录；合同数据不放在程序安装目录。
+当前发行版本：`0.1.5`。GitHub 仓库的 `src/` 是完整交付源码目录，包含一个 Python 包、三个命令、四个 skill、共用说明及安装脚本。本项目为一份特定合同建立带原文出处的 SQLite 记录；合同数据不放在程序安装目录。
 
-完整发行源码还包含仓库根目录下的 [词表示例](https://github.com/lukeruc/cogengine-legal/blob/v0.1.4/vocab/vocabulary.json)。使用时将其复制到自己的词表工作目录，并向入库 skill 提供该文件路径；词表作为独立数据使用。
+完整发行源码还包含仓库根目录下的 [词表示例](https://github.com/lukeruc/cogengine-legal/blob/v0.1.5/vocab/vocabulary.json)。使用时将其复制到自己的词表工作目录，并向入库 skill 提供该文件路径；词表作为独立数据使用。
 
 ## 安装前准备
 
-- 从 [v0.1.4 发布页面](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.4)下载完整源码并解压，或取得该标签对应的完整仓库。下文 `SOURCE_ROOT` 指向包含 `src/` 的源码根目录。只复制某一个 `SKILL.md` 无法安装或运行工具。
+- 从 [v0.1.5 发布页面](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.5)下载完整源码并解压，或取得该标签对应的完整仓库。下文 `SOURCE_ROOT` 指向包含 `src/` 的源码根目录。只复制某一个 `SKILL.md` 无法安装或运行工具。
 - 明确一个 **Python 3.11、3.12 或 3.13 的绝对路径**。该解释器须带 `sqlite3`、`venv` 和 pip；构建 wheel 时还须有 `setuptools>=68` 和 `wheel`。核心程序本身没有第三方 Python 运行依赖，`requirements.txt` 不能代替包安装。
 - 选择一个可写的**安装根**。它应独立于本仓库源码目录和合同工作目录；下文以 `/path/to/legal-install` 示意。
 - 宿主需要能读取完整 skill 目录及其相对引用、运行本地命令，并支持项目既定的子任务和人工文件意见交接。宿主注册方式由该宿主决定。
@@ -33,7 +33,7 @@ DIST_DIR="/absolute/path/to/legal-dist"
 "$PYTHON_BIN" "$SOURCE_ROOT/src/scripts/build_release.py" --output-dir "$DIST_DIR" --python "$PYTHON_BIN"
 ```
 
-本版本正常生成文件名形如 `cogengine_legal-0.1.4-py3-none-any.whl`。检查实际产物文件名，再把它用于下一步。wheel 包含 `legal/` 的运行模块、`schema.sql` 和 `config/units.v1.json`；测试、真实合同、词表内容和特定合同的辅助脚本不进入运行包。四个 skill 与共用说明由安装脚本从同一份交付源码复制到安装根。
+本版本正常生成文件名形如 `cogengine_legal-0.1.5-py3-none-any.whl`。检查实际产物文件名，再把它用于下一步。wheel 包含 `legal/` 的运行模块、`schema.sql` 和 `config/units.v1.json`；测试、真实合同、词表内容和特定合同的辅助脚本不进入运行包。四个 skill 与共用说明由安装脚本从同一份交付源码复制到安装根。
 
 ## 第二步：安装程序与共用环境
 
@@ -43,7 +43,7 @@ DIST_DIR="/absolute/path/to/legal-dist"
 SOURCE_ROOT="/absolute/path/to/cogengine-legal"
 PYTHON_BIN="/absolute/path/to/python"
 INSTALL_ROOT="/absolute/path/to/legal-install"
-WHEEL_FILE="/absolute/path/to/legal-dist/cogengine_legal-0.1.4-py3-none-any.whl"
+WHEEL_FILE="/absolute/path/to/legal-dist/cogengine_legal-0.1.5-py3-none-any.whl"
 "$PYTHON_BIN" "$SOURCE_ROOT/src/scripts/install_release.py" \
   --install-root "$INSTALL_ROOT" \
   --python "$PYTHON_BIN" \
@@ -181,3 +181,9 @@ legal-case 随安装复制 `templates/reader.md`、`summarizer.md`、`tagger.md`
 同一专用解释器中的 `legal.reader_helpers` 提供 read_json/read_text/write_json、quote_from_span、ref/source/evidence、record/node/relation/reference/detail、clause_revision、header/assemble。用法和失败处理见 legal-case 的 `references/helper-tools.md`；两个文件脚本参数继续兼容。构造仅处理已交付文件和普通内存数据，法律判断与覆盖声明由相应角色给出，正式写入仍由主会话完成。
 
 Markdown/TXT/Markdown 后缀材料（.md/.txt/.markdown，大小写不敏感）无配置时可直接接收，要求 UTF-8 且无 BOM，不需要外部转换器。DOCX/PDF/扫描件仍需显式配置适用转换器；缺少时 agent 应说明受影响材料和需补配置。显式配置优先，失败不静默改用直通。安装本项目不会自动安装转换引擎。
+
+## 工作区配置与固定交接
+
+安装后 workspaces.json 初始为空；按会话打开目录登记 workspace_root、contract_root、vocabulary_list。列表在安装 vocabularies 下，每行一个词表绝对路径，首个非空项默认。升级保留这两类用户配置，治理结果仅在明确要求后登记。完整格式见 skills/legal-case/references/startup.md（根 README 对应 src/skills 路径）。
+
+主会话使用 scripts/prepare_task.py，子任务使用 skills/legal-case/scripts/complete_task.py；后者只处理文件。角色派发为三部分，初读两份独立 summarizer 提交分别负责主体/事件和概要，均成功才交接打标。任务导出 v2 与旧 v1 分开，恢复需重新导出有效成果，不覆盖旧库。更新安装包和全部 skill 后再使用新辅助；仅更新源码不改变已有安装副本。

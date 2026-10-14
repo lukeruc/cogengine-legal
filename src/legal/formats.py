@@ -204,12 +204,13 @@ def exclusive_write(path, data):
     except FileExistsError:
         fail("FILE_EXISTS", str(path), "file already exists")
     except OSError as exc:
+        remaining = []
         if created:
             try:
                 Path(path).unlink()
             except OSError:
-                pass
-        fail("FILE_ERROR", str(path), str(exc))
+                remaining.append(str(Path(path).absolute()))
+        fail("FILE_ERROR", str(path), str(exc), **({"remaining_paths": remaining} if remaining else {}))
 
 
 def output(result, exit_code=0):

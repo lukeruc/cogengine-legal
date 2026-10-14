@@ -2,7 +2,7 @@
 
 [中文](README.md) · [English](README.en.md)
 
-当前版本：[v0.1.4](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.4)。
+当前版本：[v0.1.5](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.5)。
 
 **处理法律关系信息的基础工具。** 当前以合同为应用对象，将合同规定的权利义务、条件、限制及相互联系，整理为带原文依据的结构化记录，供查询、复核和后续应用使用。
 
@@ -82,7 +82,7 @@
 
 项目提供一份通过本工具从 22 份合同语料归纳形成的[词表示例](vocab/vocabulary.json)，包含 14 个单元、96 个槽，可用于了解词表结构，并作为自行调整的起点。使用前应结合具体合同核对其适用范围。
 
-词表示例随 `v0.1.4` 的完整源码提供，位于 `vocab/vocabulary.json`，也可[单独下载 JSON](https://raw.githubusercontent.com/lukeruc/cogengine-legal/v0.1.4/vocab/vocabulary.json)。将文件复制到自己的词表工作目录，在入库时提供该文件的绝对路径。
+词表示例随 `v0.1.5` 的完整源码提供，位于 `vocab/vocabulary.json`，也可[单独下载 JSON](https://raw.githubusercontent.com/lukeruc/cogengine-legal/v0.1.5/vocab/vocabulary.json)。将文件复制到自己的词表工作目录，在入库时提供该文件的绝对路径。
 
 ## 如何开始使用
 
@@ -105,7 +105,7 @@
 
 ### 2. 安装程序并注册 skill
 
-从 [v0.1.4 发布页面](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.4)下载完整源码并解压。将下列绝对路径替换为本机路径，`SOURCE_ROOT` 指向包含 `src/` 的源码根目录。整个代码块在同一次 shell 调用中执行，可从任意工作目录运行：
+从 [v0.1.5 发布页面](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.5)下载完整源码并解压。将下列绝对路径替换为本机路径，`SOURCE_ROOT` 指向包含 `src/` 的源码根目录。整个代码块在同一次 shell 调用中执行，可从任意工作目录运行：
 
 ```bash
 SOURCE_ROOT="/absolute/path/to/cogengine-legal"
@@ -117,7 +117,7 @@ INSTALL_ROOT="/absolute/path/to/legal-install"
 "$PYTHON_BIN" "$SOURCE_ROOT/src/scripts/install_release.py" \
   --install-root "$INSTALL_ROOT" \
   --python "$PYTHON_BIN" \
-  --wheel "$DIST_DIR/cogengine_legal-0.1.4-py3-none-any.whl"
+  --wheel "$DIST_DIR/cogengine_legal-0.1.5-py3-none-any.whl"
 ```
 
 安装脚本创建或复用安装根中的 `.venv`，安装三个命令，并复制四个 skill 和共用资料。随后按宿主已有机制，注册 `<install-root>/skills/` 下的四个完整 skill 目录，入口须能解析到安装根中的文件。注册目标是安装后的目录；源码中的 `src/skills/` 尚无安装信息。最后按[安装说明第三步](src/README.md#第三步在宿主中注册四个-skill)运行注册核对脚本，确认返回 `"host_registration":"verified"`。
@@ -146,7 +146,7 @@ agent 会按 skill 建立合同工作目录、准备材料、组织阅读与提�
 ## 当前范围与状态
 
 - **范围**：针对一份合同及其组成文件，记录文本规定的内容。实际履行情况、条款效力及跨合同组合分析由后续应用处理。
-- **版本**：当前发布版本为 [v0.1.4](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.4)，属于初始开发阶段。上述步骤从该版本源码构建安装。
+- **版本**：当前发布版本为 [v0.1.5](https://github.com/lukeruc/cogengine-legal/releases/tag/v0.1.5)，属于初始开发阶段。上述步骤从该版本源码构建安装。
 - **实现**：已提供四个 skill、三个 CLI、安装及注册核对脚本；[自动化测试](src/tests/)随源码维护。
 - **质量边界**：程序可检查格式、引用、出处和条款覆盖等明确约束。校验通过仍不能证明合同含义已经完整、准确地表达，实际提取质量需要结合具体合同检验。
 - **词表与材料**：词表的适用范围、原件质量和模型表现都会影响结果。无法表达或材料不足的内容须在交接中说明；没有查询到记录，不能直接推定合同未作约定。
@@ -166,3 +166,9 @@ agent 会按 skill 建立合同工作目录、准备材料、组织阅读与提�
 本项目采用 [MIT 许可证](LICENSE)。
 
 Markdown/TXT/Markdown 后缀材料（.md/.txt/.markdown，大小写不敏感）无配置时可直接接收，要求 UTF-8 且无 BOM，不需要外部转换器。DOCX/PDF/扫描件仍需显式配置适用转换器；缺少时 agent 应说明受影响材料和需补配置。显式配置优先，失败不静默改用直通。安装本项目不会自动安装转换引擎。
+
+## 工作区配置与固定交接
+
+安装后 workspaces.json 初始为空；按会话打开目录登记 workspace_root、contract_root、vocabulary_list。列表在安装 vocabularies 下，每行一个词表绝对路径，首个非空项默认。升级保留这两类用户配置，治理结果仅在明确要求后登记。完整格式见 skills/legal-case/references/startup.md（根 README 对应 src/skills 路径）。
+
+主会话使用 scripts/prepare_task.py，子任务使用 skills/legal-case/scripts/complete_task.py；后者只处理文件。角色派发为三部分，初读两份独立 summarizer 提交分别负责主体/事件和概要，均成功才交接打标。任务导出 v2 与旧 v1 分开，恢复需重新导出有效成果，不覆盖旧库。更新安装包和全部 skill 后再使用新辅助；仅更新源码不改变已有安装副本。

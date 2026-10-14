@@ -17,7 +17,7 @@ SOURCE = Path(__file__).resolve().parents[1]
 SKILLS = ("legal-case", "legal-vocab", "legal-preprocess", "legal-initialize")
 COMMANDS = ("legal-case", "legal-vocab", "legal-preprocess")
 REFERENCES = ("case-cli.md", "vocab-cli.md", "preprocess-cli.md", "data-formats.md")
-SCRIPTS = ("verify_registration.py",)
+SCRIPTS = ("verify_registration.py", "prepare_task.py")
 MARKER = ".cogengine-legal-environment"
 ROOT_MARKER = ".cogengine-legal-install"
 
@@ -156,6 +156,13 @@ def copy_delivery(root: Path) -> None:
     scripts.mkdir(exist_ok=True)
     for name in SCRIPTS:
         shutil.copy2(SOURCE / "scripts" / name, scripts / name)
+    # User-owned workspace configuration survives upgrades byte for byte.
+    (root / "vocabularies").mkdir(exist_ok=True)
+    configuration = root / "workspaces.json"
+    if not configuration.exists():
+        with configuration.open("x", encoding="utf-8") as stream:
+            json.dump({"format_version": 1, "workspaces": []}, stream)
+            stream.write("\n")
     if (root / "README.md").is_symlink():
         raise RuntimeError("refusing to replace README symlink")
     shutil.copy2(SOURCE / "README.md", root / "README.md")

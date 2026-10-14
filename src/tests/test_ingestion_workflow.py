@@ -16,7 +16,7 @@ from legal.formats import Invalid, InvalidBatch, digest
 from legal import preprocessing as p
 from legal.preprocess_cli import main
 from legal.reader_helpers import read_json, write_json
-from legal.initial_reading import export_initial_reading_tasks, export_initial_synthesis_task
+from workflow_inputs import export_initial_reading_tasks, export_initial_synthesis_task
 from legal.storage import initialize, register, split
 
 SRC = Path(__file__).resolve().parents[1]

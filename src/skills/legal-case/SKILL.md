@@ -5,60 +5,55 @@ description: 对一份合同及其全部组成素材建立带原文出处的 SQL
 
 # 合同案件入库
 
-## 安装路径
+## 固定启动
 
-将下列占位路径替换为宿主提供的本文件绝对路径，先解析符号链接，再取父目录：
+用安装支持的系统 Python 执行下列片段；替换 skill_file 为宿主交付路径、workspace_root 为本次会话打开目录的绝对路径。工作区在任务期间固定，后续 cd 或合同位置不改变它。
 
 ```python
+import json
 from pathlib import Path
+import subprocess
+import sys
 
-skill_dir = Path("/host/skills/legal-case/SKILL.md").resolve(strict=True).parent
-install_root = skill_dir.parent.parent
-runtime_path = install_root / "runtime.json"
-print(runtime_path)
-print(install_root / "references")
+skill_file = Path("/host/skills/legal-case/SKILL.md").resolve(strict=True)
+workspace_root = "/absolute/session/workspace"
+script = skill_file.parent.parent.parent / "scripts/prepare_task.py"
+result = subprocess.run([sys.executable, str(script), "runtime", "--input", "-"],
+    input=json.dumps({"format_version": 1, "skill_file": str(skill_file), "workspace_root": workspace_root}),
+    text=True, capture_output=True, check=False)
+print(result.stdout, end="")
+print(result.stderr, end="", file=sys.stderr)
+raise SystemExit(result.returncode)
 ```
 
-先完成上述定位，再按输出的绝对路径读取资料。本文件中的相对资料路径均以 `skill_dir` 为基准，与 shell 工作目录无关。CLI 的绝对路径从核验后的 `runtime.json` 取得。本 skill、参考资料及 CLI 均使用安装目录内的副本。
+成功回执 result 给出 install_root、python、commands、workspace_root 和 workspaces_file。其余准备辅助用该专用 python；相对资料以本 skill 真实目录为基准。只访问确定路径，不列安装树、读源码/README 或预读全部阶段。故障报告具体路径，不从 PATH 找替代工具。不需要词表的初始化、预处理及续做不读取默认词表配置。
 
-读取安装信息后，核对 `format_version` 为整数 `1`、`release_version` 为非空字符串、`install_root` 等于上述真实安装根、`environment_root` 指向其中的 `.venv`。`python` 及 `commands` 中的 `legal-case`、`legal-vocab`、`legal-preprocess` 必须是该环境内存在且可执行的绝对路径；保留环境内 Python 的启动路径。安装信息不符时报告安装问题，停止依赖它的业务调用。
+## 输入与准备
 
-## 输入与依赖
+明确材料清单、新案或续做。新案读取本会话工作区对应 workspaces.json 项及安装 vocabularies 下的路径列表；首个非空行默认，明确选择必须已登记，一次选择不改顺序。缺配置或默认失效先报告具体项，不搜索词表或跳选后项。配置格式及准备调用见 `references/startup.md`，当前正式操作参数见 `../../references/case-cli.md`；业务格式在生成正式记录时按需读取。
 
-先明确材料清单、新合同工作根目录或已有合同工作目录、全局词表路径。需转换时还需每份原件的转换配置。按本文件真实目录读取 `../../runtime.json`、`../../references/case-cli.md`、`../../references/data-formats.md`。安装信息缺失、格式错误或路径失效时报告安装问题，不从 PATH 另找工具。各份素材都沿用统一预处理入口，读取 `../legal-preprocess/SKILL.md`；纯文本无配置可直接接收，不要求转换器。sub-agent 说明位于本目录 `references/`。
-
-## 合同工作目录
-
-新合同的**第一步**是在工作根目录排他创建 `contract-YYYYMMDDTHHMMSSZ`（UTC）；同秒撞名依次加 `-02`、`-03`，不覆盖旧目录。把原件逐字复制到 `inputs/materials/001-<原文件名>` 等路径；全局词表复制到 `inputs/vocabulary/`，需转换时将配置及非代码附属文件复制到 `inputs/converters/`，转换器和适配程序复用已配置的绝对安装路径。后续 CLI 只读取合同工作目录内的工作副本，数据库固定为根目录的 `contract.sqlite`。每份素材的首次转换结果放在 `converted/001/0001/text.txt` 和 `metadata.json`，重转换用 `converted/001/0002/` 等新目录；已有转换结果也先复制到对应路径。素材编号随首次登记顺序固定，不重排。
-
- sub-agent 任务、写入文件、工具回执、分组及报告分别放 `tasks/`、`submissions/`、`receipts/`、`groups/`、`reports/`；具体递增文件名和重复运行规则见 `../../references/case-cli.md`。每个子任务只写分配的合同工作目录内路径。续做同一合同、纠错或新增材料时沿用该目录及其 `contract.sqlite`；不另建目录或复制数据库。旧合同工作目录不自动迁移。文件名不是状态，实际进度仍查库。
+新案使用 `<专用 Python> <install>/scripts/prepare_task.py case --input FILE` 校验选中词表、排他创建 contract-UTC 目录并复制明确原件、词表、转换配置及非代码资源；转换器复用安装绝对路径。所有后续产物保存在该合同目录，库为 contract.sqlite。同案续做沿用目录及冻结词表，不执行 case。原件、词表、配置副本在 inputs，转换在 converted，任务/提交/回执/分组/报告分别在 tasks/submissions/receipts/groups/reports；递增命名不覆盖旧文件。
 
 ## 已批准流程
 
-1. 新案先按上节建目录并复制输入，再以案件内词表副本调用 `case_cli init` 冻结词表；已有案沿用目录，先查询 `progress`、词表哈希与当前回执。
+1. 新案先用 case 固定准备创建目录并复制输入，再以案件内词表副本调用 `case_cli init` 冻结词表；已有案沿用目录，先查询 `progress`、词表哈希与当前回执。
 2. 各份素材经预处理 skill 取得文本与元数据，用 `register` 登记原件和全文，再用 `split` 切分。异常影响阅读时依既有规则要求更好源件。
-3. 按 `references/preparation.md` 和 `references/reading-inputs.md` 固定版本并先准备完整阅读材料。完整条款连续分段，目标初值每任务 20,000 个 Unicode 字符；超长单条交同一 reader 分窗读完。各段派 reader 并行全读、写独立的原文依据笔记；收齐实际已读范围后交一个 summarizer 统一形成概要、主体和事件，单段由同一 reader 兼任。主会话提交一个 `preparation` JSON，`covered_clauses=[]`，成功后交接正式完整共用查询。
+3. 进入初读才读 `references/preparation.md` 和 `references/reading-inputs.md`。用 reading 固定辅助导出 v2 原文窗口及 reader 三部分正文；reader 全读并记笔记。收齐真实范围后用 synthesis 导出两个独立 summarizer：主体/事件提交不含 overview，概要提交 records=[]。单段 reader 原会话接续主体/事件，另派概要任务。两份分别 write，顺序不限；失败仅修该份，不回滚成功结果。均成功、主读实际读全且问题明确处置后，查询正式概要作为下游共同背景及完整共用身份。
 4. 按不重叠条款批次派 tagger，参见 `references/tagging.md`。主会话逐文件 `write` 标签修订及无匹配缺口。
 5. 运行 `group` 导出逐字分组；按 `references/handoff.md` 写完整任务及输入清单，派发首先列出负责条款及全部规定的完整提取责任。任务 `unit_id` 仅提供分组上下文，不限制输出关系的单元；比较负责条款集合，保证每条款只有一个完整提取责任。冻结词表和共用对象完整查询结果供 extractor 读取，多标签副本只作上下文。
 6. 按完整条款主责派 extractor 并行提取，参见 `references/extraction.md`。extractor 先识别规定、主体及完整限制，再选单元/适用槽并组织 JSON；不得假定其他 extractor 会提取本条款的剩余规定。每个 extractor 保存一份完整 `extraction` JSON，并返回路径、负责条款、数量与问题摘要。
 7. 主会话读取摘要及提交文件的 `issues`，按下节处理明确问题，再每份文件调用一次 `write`。失败将具体 code/path 和必要版本交原 sub-agent 修正整份文件；成功保存回执。
 8. 运行 `reconcile`。按报告用既有 `write` 修正或撤销，再重新对账；报告有 errors 时如实交接未完成。
 
-## 两部分角色派发（主会话）
+## 三部分派发及固定构造
 
-按职责读取 `templates/reader.md`、`templates/summarizer.md`、`templates/tagger.md` 或 `templates/extractor.md`。实际派发恰含“固定内容”和“本次任务要求”两部分；第一部分原样完整带入，第二部分填实身份、目标、责任/上下文、可读文件白名单（绝对文件路径、内容范围、用途、开始必读或具体触发时机）、格式参数、独立输出、可用操作、自然语言关注或纠错要求及返回摘要，保存实际派发正文到现有 tasks。不能只发模板路径或临时改写权限。
+reading、synthesis、tagging、extraction 固定准备辅助输出 task_file、instructions_file、binding_file、output_file。主会话直接交付完整 instructions 正文，并在第三部分补业务关注和实际授权；第一部分固定角色、第二部分共同目标、第三部分个别范围及文件白名单。模板、管理 manifest、安装与机器快照不是全部角色的必读清单；任务说明已交付后不重复要求打开。
 
-角色实例用 reader、summarizer、tagger、extractor，同类并行加 -1、-2 等；宿主 ID 保留寻址，不能改名就在标题和摘要显示职责。task_id、旧 role 代码和正式 ID 不因显示名变化迁移；submitted_by 由主会话明确交付。单段 reader 完成后沿用原会话派发 summarizer 内容，不新开实例。
+reader 直接交 Markdown。两个 summarizer 分别使用 summarizer.md、summarizer-overview.md；后续 tagger/extractor 的共同背景直接取正式 overview.body，并标记 overview_id/文本版本，不重新摘要。共用身份保持完整记录和出处。固定绑定只交给实际构造程序，角色使用同版 complete_task.py，填写业务记录/概要正文、显式 issues；extractor 自行明确覆盖清单。find_quote 和 clause_revision 继续处理精确锚及固定修订字段。
 
-主会话查询并固定全部分页、正式版本和共享 ID。每个角色只拿自己的说明、完整数据、需要的工具说明与同版样例；纯阅读不用无关构造样例。固定索引须指定字段和条目组成的确定文件集合，不能授权整个目录。input_files 与实际授权一致；导出资源供选择，不是全部必读清单。主会话展开模板后不把模板路径交给 sub-agent 重读。文件里的链接不自动授权；自有产物可读，续做旧文件明确交接。执行辅助脚本不授予读源码权限。summarizer 的已完成 reader 笔记由主会话正式交付，同时交接已执行的文件/版本核验、共享查询序号、每段实际已读/未读/截断回报及尚未解决的问题。summarizer 从笔记范围声明及正文进入归纳，处理可见矛盾和具体回读需求，不重复正常机械核验。检查路径存在、输出未占用，给足资料后再派发；不把数据库或正式 CLI 路径当子任务接口。
+主会话统一调用正式 CLI；子任务不访问库、正式命令、其他并行任务或实现。角色名 reader、summarizer、tagger、extractor，同类加数字，署名由绑定明确指定。缺材料由主会话补交白名单，已授权原文可定向回读，纠错交原任务，不新增 fixer/reviewer 或全量互查。
 
-`preparation.md` §2 给 reader，§3—§4 给 summarizer；tagger 用 `tagging.md`，extractor 用 `extraction.md`。主会话操作分别在本文件、`reading-inputs.md`、`handoff.md`；各角色无需读取主会话编排说明来判断权限。纠错交原角色，资料/安装/实现问题由主会话处理，不新增 fixer/reviewer 环节。
-
-## 按需使用的 sub-agent 辅助脚本
-
-派发时读取 `references/helper-tools.md`，将核验后的 runtime.python 启动路径、本 skill 真实目录内 `scripts/find_quote.py`、`scripts/build_submission.py` 的绝对路径，以及分配的输入/输出绝对路径和用法直接交给 sub-agent。主会话准备固定版本的完整条款快照；sub-agent 可以按需生成锚数组、组装完整提交，也可以直接写同格式文件。公开构造 API 及 `examples/quote_requests.py`、`preparation.py`、`tagging.py`、`extraction.py` 和虚构 `fixture.json` 的用途见 helper-tools；将本角色所需样例绝对路径交付。
-
-两个脚本只处理任务文件，不查询数据库或调用正式 CLI；sub-agent 需要补充材料和版本时由主会话交付。信封、请求及记录数组放 tasks 的分配子目录，完整提交放指定 submissions 路径。脚本不补法律判断、不覆盖已有文件；文件成功不表示入库或语义验收成功。主会话仍统一 write、处理 issues 和 reconcile，不增加任务字段或必经检查。
+按阶段读取 preparation.md、tagging.md、handoff.md；构造参考 helper-tools.md 按角色交适用章节。初读概要任务不读完整 node/evidence/value 格式，reader 不读构造格式。单份成功回执不证明两任务准备完成，对账也不替代准备条件。
 
 ## 接收结果与明确问题
 

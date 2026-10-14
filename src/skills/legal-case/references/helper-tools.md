@@ -1,3 +1,18 @@
+# 固定任务构造（当前入口）
+
+案件 summarizer、tagger、extractor 采用主会话交付的 complete_task.py 与固定绑定，不自行构造信封；初读 reader 只写 Markdown。以下旧 build_submission/header 能力保留供兼容和公开底层调用，当前任务最终构造以 complete_task 为准。
+
+命令：`<专用 Python> <complete_task.py> --binding FILE --issues FILE`。
+
+- preparation_records：一个或多个 --records，phase=preparation、covered=[]、无 overview。
+- preparation_overview：--body UTF-8 原样正文，records=[]；不接 --records，不需要 node/evidence/value schema。
+- tagging：一个或多个 --records，covered=[]。
+- extraction：一个或多个 --records，且 --covered-clauses 是角色明确提供的对象/记录对数组。
+
+绑定严格 JSON，mode/case_id/vocabulary_hash/submitted_by/output_file 由主会话预填，overview 另有 overview_text_versions/overview_authored_by。子任务不修改绑定；无 --output 覆盖。issues 必须显式文件，可 []；空白正文、缺覆盖、错模式或已有输出退出 2。成功仅表示组装，正式版本、词表、来源及语义仍由 write/验收处理。保留 stdout/stderr 和原退出码。
+
+精确引句使用 find_quote；条款修订调用 clause_revision 保留固定字段。任务仅组织自己的业务数组，不重写通用匹配或 schema 校验，不读取实现。绑定和完整快照可只授权程序使用；模型按用途读适用章节。
+
 # 入库角色的文件辅助工具
 
 两个脚本按需用于已有任务，能直接生成正确 JSON 时可以不用。sub-agent 决定建模内容、引句、来源和完成声明；主会话调用正式 CLI 写入、接收回执及对账。辅助成功只表示任务文件处理成功。
@@ -148,7 +163,7 @@ write_json(new_submission_path, document)
 | clauses | items 为完整记录，object_id/record_id/kind/status 在外层，原句在 item.data.text；地址、编号、sequence、text_version 同在 data |
 | overview | items=[] 为无概要；非空项直接含 body/text_versions/authored_by，不是 node.data |
 | events/shared-objects | items 为完整正式记录，保留 data/evidence/provenance 和对象/记录身份；不能仅用名称简表 |
-| synthesis shared | 顶层 overview/events/shared-objects/vocabulary 四项均为快照，词表是 shared["vocabulary"]["items"][0] |
+| 当前 shared-identities | events/shared-objects 两个完整快照；合同容器可能存在，不表示已提取过主体/事件；概要任务不读它 |
 | manifest/directory | 范围及固定路径索引，初始 unread 不代表已交付笔记的实际已读状态 |
 
 ```python

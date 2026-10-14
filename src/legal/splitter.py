@@ -9,7 +9,7 @@ from .scan_structure_reference import (RE_CN_ARTICLE, RE_CN_CHAPTER, RE_DECIMAL,
                                        _is_inline_continuation, _normalize_heading_line,
                                        cn2int, roman2int, scan_structure)
 
-ALGORITHM_VERSION = "contract_v3.article.4"
+ALGORITHM_VERSION = "contract_v3.article.5"
 MARKDOWN_HEADING = re.compile(r"^ {0,3}(#{1,6})[ \t]+(.+?)\s*$")
 NUMBERED = (RE_CN_ARTICLE, RE_DECIMAL, RE_EN_ARTICLE, RE_EN_SECTION, RE_EN_CLAUSE)
 NON_CONTRACT_HEADINGS = re.compile(
@@ -18,6 +18,7 @@ NON_CONTRACT_HEADINGS = re.compile(
 )
 SENTENCE_END = re.compile(r"[.!?。！？;；:]\s*$")
 ATTACHMENT = re.compile(r"^(?:附件[一二三四五六七八九十百零\d]+|(?i:Appendix|Exhibit|Schedule|Annex)\s+[A-Z\d]+)(?![A-Za-z\d])")
+CN_REFERENCE_CONTINUATION = re.compile(r"^(?:的|所述|所列|项下|规定的|约定的|[^\s。；：:]{1,16}(?:条件|规定|安排)(?:分别)?适用)")
 
 
 def _title(line):
@@ -79,6 +80,10 @@ def _explicit_roles(lines, starts):
         if pattern is not RE_CN_ARTICLE and _is_inline_continuation(after):
             continue
         marked = bool(MARKDOWN_HEADING.match(line) or re.search(r"\*\*|__", line))
+        if pattern is RE_CN_ARTICLE and not marked and SENTENCE_END.search(title) and CN_REFERENCE_CONTINUATION.match(after):
+            # An unmarked grammatical reference is body content, not an
+            # independent article. Explicitly marked headings remain intact.
+            continue
         previous = lines[i - 1].strip() if i else ""
         if pattern is not RE_CN_ARTICLE and not marked and previous and not SENTENCE_END.search(previous) and not previous.startswith("|"):
             continue

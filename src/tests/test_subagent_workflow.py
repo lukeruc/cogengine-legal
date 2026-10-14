@@ -16,7 +16,7 @@ from unittest.mock import patch
 
 from legal import reader_helpers as h
 from legal.formats import Invalid, InvalidBatch, new_id
-from legal.initial_reading import export_initial_reading_tasks, export_initial_synthesis_task
+from workflow_inputs import export_initial_reading_tasks, export_initial_synthesis_task
 from legal.model import write
 from legal.query import query
 from legal.storage import initialize, register, split
@@ -220,9 +220,9 @@ class ExamplesAndHandoff(unittest.TestCase):
         for role in ('reader','summarizer','tagger','extractor'):
             template=(SRC/f'skills/legal-case/templates/{role}.md').read_text()
             self.assertEqual([line for line in template.splitlines() if line.startswith('## ')],
-                             ['## 一、固定内容','## 二、本次任务要求'])
-            fixed=template.split('## 一、固定内容\n\n')[1].split('\n## 二、本次任务要求')[0]
-            boundaries.append(fixed.split('按指定格式交付文件和摘要')[0])
+                             ['## 一、固定角色信息','## 二、共享任务总体上下文','## 三、个别任务要求'])
+            fixed=template.split('## 一、固定角色信息\n\n')[1].split('\n## 二、共享任务总体上下文')[0]
+            boundaries.append(fixed.split('\n\n',2)[0:2])
         self.assertTrue(all(value==boundaries[0] for value in boundaries))
 
     def test_examples_formal_write_and_single_reader_handoff(self):
@@ -242,7 +242,7 @@ class ExamplesAndHandoff(unittest.TestCase):
             (root/'submissions').mkdir()
             exported=export_initial_reading_tasks(db,root/'tasks/0001',SRC,root/'submissions/prep.json',window_chars=20)
             task=exported['tasks'][0]
-            self.assertEqual(task['role'],'reading_and_synthesis')
+            self.assertEqual(task['role'],'reader')
             self.assertNotIn(str(SRC/'skills/legal-case/templates/reader.md'),task['input_files'])
             self.assertTrue(all(w['file'] in task['input_files'] for w in task['windows']))
             self.assertNotIn(str(EXAMPLES/'tagging.py'),task['input_files'])

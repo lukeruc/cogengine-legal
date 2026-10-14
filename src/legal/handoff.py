@@ -26,7 +26,7 @@ def _all(db_path, **options):
         offset = page["next_offset"]
 
 
-def export_extraction_tasks(db_path, plans, output_dir, resource_root, clause_ids=None):
+def export_extraction_tasks(db_path, plans, output_dir, resource_root, clause_ids=None, task_context_file=None):
     """Export spec §10.1 tasks; reject missing, duplicate or stale assignments.
 
     Each plan has task_id, unit_id, responsible_clauses, context_clauses,
@@ -74,6 +74,10 @@ def export_extraction_tasks(db_path, plans, output_dir, resource_root, clause_id
     assigned, task_names, outputs, tasks = set(), set(), set(), []
     files = {name: (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
              for name, value in exports.items()}
+    from .task_preparation import binding, context_text, instructions, overview_context
+    if task_context_file is None:
+        fail("INVALID_ARGUMENT", "/task_context_file", "shared task context required")
+    common_context = context_text(task_context_file, contract) + overview_context(exports["overview.json"])
     for source, name in ((resources / "skills/legal-case/references/extraction.md", "extraction.md"),
                          (resources / "references/data-formats.md", "data-formats.md")):
         if not source.is_file():
@@ -161,6 +165,22 @@ def export_extraction_tasks(db_path, plans, output_dir, resource_root, clause_id
                 "responsible_clauses": plan["responsible_clauses"], "context_clauses": plan["context_clauses"],
                 "input_files": [str(destination / name) for name in (*exports, "extraction.md", "data-formats.md", group_name)] + [str(source) for source in role_inputs],
                 "output_file": str(output)}
+        binding_name = task_id + "-binding.json"
+        instructions_name = task_id + "-instructions.md"
+        readable_name = task_id + "-clauses.md"
+        clause_records = [current[r["object_id"]] for r in plan["responsible_clauses"] + plan["context_clauses"]]
+        files[readable_name] = "\n\n".join(f"## {c['object_id']} / {c['record_id']}\n\n{c['data']['text']}" for c in clause_records).encode("utf-8")
+        helper_task = {**task, "role": "extractor", "purpose": "extraction", "case_id": basis["case_id"],
+                       "instructions_file": str(destination / instructions_name), "binding_file": str(destination / binding_name)}
+        fixed = binding("extraction", helper_task, vocab_hash, f"extractor-{index + 1}")
+        files[binding_name] = (json.dumps(fixed, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        task["input_files"] += [str(destination / readable_name), str(destination / binding_name), str(destination / instructions_name)]
+        helper_task["input_files"] = [p for p in task["input_files"] if p != str(destination / instructions_name)]
+        files[instructions_name] = instructions(resources, "extractor", common_context, helper_task,
+            "负责条款的全部规定须完整提取一次，unit_id 不限制输出单元。\n负责：" + json.dumps(plan["responsible_clauses"]) +
+            "\n仅供理解：" + json.dumps(plan["context_clauses"]),
+            on_demand=[str(destination / "clauses.json"), str(destination / "data-formats.md"), *[str(p) for p in role_inputs]],
+            binding_data=fixed).encode("utf-8")
         task_name = f"{task_id}.json"
         if task_name in files:
             fail("INVALID_ARGUMENT", path + "/task_id", "task filename conflicts with input snapshot")
@@ -171,16 +191,7 @@ def export_extraction_tasks(db_path, plans, output_dir, resource_root, clause_id
     header, _ = _all(db_path, view="progress")
     if header["case_id"] != basis["case_id"] or header["quality"]["current_sequence"] != basis["quality"]["current_sequence"]:
         fail("STALE_REVISION", "/tasks/input_files", "case changed before publishing tasks")
-    destination.mkdir(parents=True, exist_ok=True)
-    created = []
-    try:
-        for name, data in files.items():
-            target = destination / name
-            exclusive_write(target, data)
-            created.append(target)
-    except Exception:
-        for target in created:
-            target.unlink(missing_ok=True)
-        raise
+    from .task_files import publish
+    created = publish(destination, files)
     return {"case_id": basis["case_id"], "checked_sequence": basis["quality"]["current_sequence"],
-            "tasks": tasks, "files": [str(path) for path in created]}
+            "tasks": tasks, "files": created}

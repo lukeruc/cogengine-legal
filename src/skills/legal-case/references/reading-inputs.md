@@ -1,72 +1,13 @@
-# 初读材料导出辅助
+# 初读固定辅助：主会话
 
-这是既有 preparation 环节的 Python 库辅助，不新增 CLI 或数据库状态。使用核验安装的共用解释器导入 `legal.initial_reading`，资源根为同一安装根；职责见 [preparation.md](preparation.md)。
+运行 `<专用 Python> <install>/scripts/prepare_task.py reading --input FILE`，严格 JSON 输入含 format_version=1、db_path、output_dir、task_context_file、preparation_files={records,overview}，可选 text_version_ids、target_chars=20000、window_chars=6000。全部路径绝对且在该合同目录对应子目录；新输出不覆盖。task_context_file 由主会话根据用户目标及材料范围先写，不预设交易架构。
 
-## 准备阅读材料
+沿用完整条款连续分段，超长条款由一个 reader 分窗全读；原文逐字导出，管理标题不混入正文。manifest 和 reader task 内部版本为 2；reader 的 input_files 仅含目录、原文窗口/精确上下文，不含词表、共享状态或完整格式；三部分 instructions 正文直接交付，角色不重复打开 task/manifest。
 
-```python
-from legal.initial_reading import export_initial_reading_tasks
+收齐笔记及真实范围后运行 `synthesis --input FILE`：format_version=1、db_path、manifest_file、output_dir、reader_reports 数组。每项 task_id、notes_file、read_ranges、unread_ranges、issues；范围项 {text_version_id,start_offset,end_offset} 为全文 Unicode 半开区间，notes 必须是对应 reader 分配输出。缺段、空笔记、未读、版本改变或范围声明不完整定位字段报错。检查声明不证明实际阅读。
 
-result = export_initial_reading_tasks(
-    db_path=contract_dir / "contract.sqlite",
-    output_dir=contract_dir / "tasks/0001-initial-reading",
-    resource_root=install_root,
-    preparation_file=contract_dir / "submissions/0001-preparation.json",
-    target_chars=20_000,
-    window_chars=6_000,
-)
-```
+输出两个 format_version=2、role=summarizer 的独立任务，固定 task_id 为 summarizer-records/summarizer-overview，purpose=records/overview，各自 instructions、binding 和 preparation 输出。单段 records 的 continue_reader_task_id 指原 reader，overview 为 null。二者使用相同笔记和固定原文，不互相依赖；records 拿完整正式身份及按需来源/构造规则，overview 不拿业务格式/词表/锚工具。
 
-示例的 contract_dir、install_root 是调用方实际绝对路径的 pathlib.Path；使用安装信息中共用解释器，不混用旧代码和新说明。原七个案件 CLI 命令不变。
+主会话调用两次正式 write；某份失败只续该份。已成功的结果及 ID 复用；回执丢失幂等重放原提交。概要修改追加 preparation，业务记录完整版本追加。两份均成功且实际读全后才能进入打标；不是根据文件名或旧概要猜完成。
 
-- output_dir 是合同 tasks 下按现有序号分配的新/空子目录，不覆盖产物。
-- preparation_file 是 submissions 下分配的新文件；summarizer 写 JSON，主会话调用现有 write。
-- text_version_ids 省略时主读全部当前素材；增量时指定新增素材的当前文本对象 ID 集合，其他当前全文仍提供回读入口。不接受旧版本或半条款主读范围。
-- target_chars 默认为 20,000 Unicode 字符，含标题、表格、空白；独立超长条款不拆任务。
-- window_chars 默认为 6,000，按宿主单次输出能力调整，与任务目标独立。字符数不是 token 数，实际截断仍要补读。
-
-辅助读全部分页，固定 case_id/序号，按素材内 sequence 排序；选中条款须逐字重建登记全文。只导出，不改数据库、登记原文或原件。
-
-返回 manifest_file、tasks、files 和固定序号。导出位置：
-
-| 文件 | 用途 |
-|---|---|
-| manifest.json / directory.md | 材料、版本、顺序、编号/区域、字符区间及初始未读清单 |
-| materials.json / texts.json / clauses.json | 完整查询快照 |
-| vocabulary.json / overview.json / events.json / shared-objects.json | 完整冻结词表及既有共用记录，空结果显式保存 |
-| texts/*.txt / clauses/*.txt | 逐字全文/条款原文，供定位回读 |
-| windows/*.txt | 无管理字段的连续原文窗口，任务附条款内及全文 Unicode 半开区间 |
-| 0001-reading.json / 0001-reading.md 等 | 分段任务和管理标题/窗口顺序，含上级标题上下文入口 |
-| 0001-notes.md 等 | reader 的独立输出路径；导出不预填已读笔记 |
-
-任务是工作文件：main_reading_clauses 是对象/记录 ID 对；windows 列连续窗口；context_clauses 是阅读上下文；input_files 给明确输入位置。role=segment_reading 只产 Markdown 笔记，不分配事件 ID；只有一段时 role=reading_and_synthesis，附 preparation_file，由同一 reader 继续归纳。
-
-说明和数据格式引用核验存在的安装绝对路径，保留安装内依赖关系，不复制出失效相对链接。派发前检查路径，reader 顺序全读窗口，截断补读。
-
-## 收齐后形成归纳任务
-
-先检查 reader 回报的实际已读/未读/截断/问题范围，补齐受阻任务再收全部笔记。文件存在不等于读完。
-
-```python
-from legal.initial_reading import export_initial_synthesis_task
-
-task = export_initial_synthesis_task(
-    db_path=contract_dir / "contract.sqlite",
-    manifest_file=result["manifest_file"],
-    output_file=contract_dir / "tasks/0001-initial-reading/0002-synthesis.json",
-)
-```
-
-归纳任务用 manifest 同目录下新的 JSON 文件。辅助检查当前素材/文本/条款版本和原文快照、笔记存在且非空，重新导出最新概要/正式事件/共用对象/词表到对应 *-shared.json，给一个 summarizer。单段的 continue_reader_task_id 指向原 reader，不能另开 agent；单段也可以直接继续原任务，提交前查询最新共用身份。
-
-归纳给唯一 preparation 输出和 covered_clauses=[]。已存在准备文件时先查库/回执判断重放或修正，不覆盖成新一套对象。辅助不解析笔记为业务 schema，不证明实际已读、问题解决或语义准确。
-
-## 恢复
-
-`check_reading_versions(db_path, manifest_file)` 核对当前素材/文本/条款版本及导出原文，返回当前序号与新增文本 ID。无关提交改变序号不自动否定有效笔记；受影响版本改变则重定阅读依据，新素材另行主读，旧共同条件按问题回读。
-
-它不返回读完或语义通过；复用前仍检查笔记实际已读/未读。共用记录变化时归纳使用新完整查询，成功准备的正式身份和进度以数据库为准。
-
-主会话从已安装 templates/reader.md、templates/summarizer.md 展开固定正文，模板不在子任务 input_files 中重复交付。导出提供本角色资源候选和完整快照，正文填写逐文件白名单的范围、用途、开始或触发读取时机；input_files 授权必须一致，候选不等于全部必读。reader 的窗口路径显式列入 input_files；额外原文回读可授权 manifest.directory 中明确条目的 text_file 等固定清单，不能授权整个子目录。只有被指定的字段/条目才扩大文件集合。
-
-派发 summarizer 前主会话交接导出/版本核验回执、case_id/词表哈希/固定版本/共享序号依据、各 reader 实际范围声明及仍有问题，输出路径由排他发布处理竞争。summarizer 按路径读笔记范围及正文，正常承接机械核验；可见矛盾和不足仍须处理，不重复目录/大小/所有键探查。共享形状见 helper-tools“固定输入”；笔记足够时用准确原句和 clauses 快照生成锚，不要求逐条再打开原文。初始 unread 不代表当前回报。
+`legal.initial_reading.check_reading_versions` 检查固定原文、素材/文本/条款版本；无关提交改变序号不使有效笔记失效。v1 manifest 不作为 v2 读取；旧成果恢复时重新导出 v2，复用明确验证有效的笔记及回执，不覆盖旧库或旧文件。

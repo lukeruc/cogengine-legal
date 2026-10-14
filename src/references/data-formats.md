@@ -86,7 +86,7 @@ id、origin_unit_id、replaces成员使用规范UUID；origin/replaces可指历�
 
 非 extraction 的 covered_clauses 必须为空。extraction 必须至少声明一个负责条款；correction 可修正相同业务对象，但不会凭此新增提取完成记录。preparation 可仅更新概要，不伪造事件。CLI 不验证提交者字符串是否真是指定 agent；事件的认定权属于 skill 的职责约束，验收须检查任务交接。
 
-初读分段任务及 Markdown 笔记是 tasks 中的工作文件，不是本交换格式的写入记录，不逐份 write；主读范围不声明 extraction 完成。一个 summarizer（单段由原 reader 兼任）形成一份 preparation，主体/事件同一性按原文统一判断，笔记与概要不能充当正式断言来源前提。执行与导出规则见 [preparation.md](../skills/legal-case/references/preparation.md) 和 [reading-inputs.md](../skills/legal-case/references/reading-inputs.md)。
+初读分段任务及 Markdown 笔记是 tasks 中的工作文件，不是本交换格式的写入记录，不逐份 write；主读范围不声明 extraction 完成。两个 summarizer 分别形成主体/事件记录和概要两份 preparation；单段原 reader 接续记录任务，另派概要任务，主体/事件同一性按原文统一判断，笔记与概要不能充当正式断言来源前提。执行与导出规则见 [preparation.md](../skills/legal-case/references/preparation.md) 和 [reading-inputs.md](../skills/legal-case/references/reading-inputs.md)。
 
 ### 3.2 单记录
 
@@ -298,6 +298,6 @@ II 级 evidence.path 必须直接指向整个非空 quantity 值且 amount 非 n
 
 ## 固定查询快照的读取位置
 
-主会话全分页导出是 {case_id,checked_sequence,items}，原始 CLI 回执另含 ok/quality/分页字段，不混用。词表 items 恰含一项，items[0] 直接是 format_version/units/slots/assignments/hash，无 source/vocabulary 包装。clause 原文在 item.data.text，外层 object_id/record_id/evidence/provenance 不是业务 data。overview 非空 items 项直接有 body/text_versions/authored_by；events/共享节点为完整正式记录，空 items 是明确结果。synthesis shared 文件四个键 overview/events/shared-objects/vocabulary 各装一个快照，词表位置 shared["vocabulary"]["items"][0]。必需字段缺失或词表 items 缺项报告具体文件/字段/预期/影响，不能 get 空值兜底；合法 units=[] 和共享 items=[] 才可报告为空。可选字段的原规则不变。
+主会话全分页导出是 {case_id,checked_sequence,items}，原始 CLI 回执另含 ok/quality/分页字段，不混用。词表 items 恰含一项，items[0] 直接是 format_version/units/slots/assignments/hash，无 source/vocabulary 包装。clause 原文在 item.data.text，外层 object_id/record_id/evidence/provenance 不是业务 data。overview 非空 items 项直接有 body/text_versions/authored_by；events/共享节点为完整正式记录，空 items 是明确结果。当前主体/事件 shared-identities 文件只含 events/shared-objects 两个完整快照，不把词表或概要交给记录归纳任务；概要任务有需要才拿 previous-overview 快照。历史四键 synthesis shared 仅描述旧交付，不再作为当前入口。必需字段缺失或词表 items 缺项报告具体文件/字段/预期/影响，不能 get 空值兜底；合法 units=[] 和共享 items=[] 才可报告为空。可选字段的原规则不变。
 
 按角色及用途查章节：summarizer 写主体/事件/概要时查 §3—§4；tagger 查 §3 clause 和 evidence 及 §4；extractor 必须掌握 §1 完整槽适用规则，表达具体值按需查 §2，构造提交查 §3—§4。读取受派发白名单约束，说明中的相对链接不授予额外文件权限。公共工具可读授权的完整快照；模型阅读范围与主责仍取本次任务。

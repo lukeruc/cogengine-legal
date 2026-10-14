@@ -30,11 +30,11 @@ def _manifest(path, contract):
     if not path.is_relative_to(contract / "tasks"):
         fail("INVALID_ARGUMENT", "/reading/manifest", "manifest must stay under contract/tasks")
     manifest = read_json(path)
-    fields(manifest, ["format_version", "case_id", "checked_sequence", "target_chars", "window_chars",
-                      "selected_text_versions", "materials", "directory", "tasks", "preparation_file",
-                      "references", "input_hashes"], [], "/reading/manifest")
-    if type(manifest["format_version"]) is not int or manifest["format_version"] != 1:
+    if not isinstance(manifest, dict) or type(manifest.get("format_version")) is not int or manifest["format_version"] != 2:
         fail("UNSUPPORTED_VERSION", "/reading/format_version", "unsupported reading work file version")
+    fields(manifest, ["format_version", "case_id", "checked_sequence", "target_chars", "window_chars",
+                      "selected_text_versions", "materials", "directory", "tasks", "preparation_files",
+                      "task_context_file", "references", "input_hashes"], [], "/reading/manifest")
     for name in ("materials", "directory", "tasks", "references", "selected_text_versions"):
         if not isinstance(manifest[name], list) or not manifest[name]:
             fail("INVALID_ARGUMENT", "/reading/" + name, "nonempty list required")
@@ -49,6 +49,9 @@ def _manifest(path, contract):
     for reference in manifest["references"]:
         if not Path(reference).is_file():
             fail("FILE_ERROR", reference, "installed reading reference missing")
+    from .formats import file_text
+    if file_text(manifest["task_context_file"]) != _bytes(path.parent / "task-context.md").decode("utf-8"):
+        fail("STALE_REVISION", "/reading/task_context_file", "shared task context changed; explicitly re-export affected handoff")
     return manifest
 
 
@@ -77,19 +80,8 @@ def _snapshot(db_path):
 
 
 def _publish(destination, files):
-    destination.mkdir(parents=True, exist_ok=True)
-    created = []
-    try:
-        for name, data in files.items():
-            path = destination / name
-            path.parent.mkdir(parents=True, exist_ok=True)
-            exclusive_write(path, data)
-            created.append(path)
-    except Exception:
-        for path in reversed(created):
-            path.unlink(missing_ok=True)
-        raise
-    return [str(path) for path in created]
+    from .task_files import publish
+    return publish(destination, files)
 
 
 def _contexts(clauses):
@@ -112,12 +104,13 @@ def _contexts(clauses):
     return result
 
 
-def export_initial_reading_tasks(db_path, output_dir, resource_root, preparation_file,
-                                text_version_ids=None, target_chars=20_000, window_chars=6_000):
+def export_initial_reading_tasks(db_path, output_dir, resource_root, preparation_files,
+                                text_version_ids=None, target_chars=20_000, window_chars=6_000,
+                                task_context_file=None):
     """Export all inputs before dispatch, partitioning whole current clauses.
 
     output_dir is a new/empty numbered directory under contract/tasks.
-    preparation_file is a caller-assigned unused path under submissions.
+    preparation_files assigns separate records/overview paths under submissions.
     text_version_ids selects complete current materials for an incremental pass;
     all current materials remain available for directed contextual rereading.
     window_chars is independently chosen for the host's tool output capacity.
@@ -126,13 +119,19 @@ def export_initial_reading_tasks(db_path, output_dir, resource_root, preparation
     integer(window_chars, "/reading/window_chars", 1)
     contract = Path(db_path).resolve().parent
     destination = Path(output_dir).resolve()
-    output = Path(preparation_file).resolve()
+    fields(preparation_files, ["records", "overview"], [], "/reading/preparation_files")
+    outputs = {k: Path(v).resolve() for k, v in preparation_files.items()}
     if not destination.is_relative_to(contract / "tasks") or destination == contract / "tasks":
         fail("INVALID_ARGUMENT", "/reading/output_dir", "use a new contract/tasks subdirectory")
     if destination.exists() and (not destination.is_dir() or any(destination.iterdir())):
         fail("FILE_EXISTS", "/reading/output_dir", "reading directory is not empty")
-    if not output.is_relative_to(contract / "submissions") or output == contract / "submissions" or output.exists():
-        fail("FILE_EXISTS", "/reading/preparation_file", "use an unused contract submission path")
+    for key, output in outputs.items():
+        if not output.is_relative_to(contract / "submissions") or output == contract / "submissions" or output.exists():
+            fail("FILE_EXISTS", "/reading/preparation_files/" + key, "use an unused contract submission path")
+    if len(set(outputs.values())) != 2:
+        fail("INVALID_ARGUMENT", "/reading/preparation_files", "distinct outputs required")
+    from .task_preparation import context_text, instructions
+    common_context = context_text(task_context_file, contract)
     resources = Path(resource_root).resolve()
     references = [resources / "skills/legal-case/references/preparation.md",
                   resources / "references/data-formats.md"]
@@ -141,10 +140,11 @@ def export_initial_reading_tasks(db_path, output_dir, resource_root, preparation
                     resources / "references/case-cli.md"]
     reader_template = resources / "skills/legal-case/templates/reader.md"
     summarizer_template = resources / "skills/legal-case/templates/summarizer.md"
+    overview_template = resources / "skills/legal-case/templates/summarizer-overview.md"
     summarizer_inputs = [resources / "skills/legal-case" / name for name in (
         "references/helper-tools.md", "examples/quote_requests.py",
         "examples/preparation.py", "examples/fixture.json")]
-    dependencies += [reader_template, summarizer_template, *summarizer_inputs]
+    dependencies += [reader_template, summarizer_template, overview_template, *summarizer_inputs]
     for path in references + dependencies:
         if not path.is_file():
             fail("FILE_ERROR", str(path), "installed reading reference missing")
@@ -165,6 +165,7 @@ def export_initial_reading_tasks(db_path, output_dir, resource_root, preparation
     for clause in exports["clauses"]["items"]:
         clauses_by_text[clause["data"]["text_version"]["object_id"]].append(clause)
     files = {f"{name}.json": _json_bytes(value) for name, value in exports.items()}
+    files["task-context.md"] = common_context.encode("utf-8")
     directory, material_list, segments = [], [], []
     # UUID sorting only makes presentation stable; it implies no legal priority.
     for text_index, text_id in enumerate(sorted(current), 1):
@@ -222,8 +223,9 @@ def export_initial_reading_tasks(db_path, output_dir, resource_root, preparation
     if not segments:
         fail("COVERAGE_INVALID", "/reading/clauses", "selected materials have no reading ranges")
     entries = {c["object_id"]: c for c in directory}
-    common = [str(path) for path in references] + [str(destination / name) for name in
-              ("manifest.json", "directory.md", "materials.json", "vocabulary.json", "overview.json", "events.json", "shared-objects.json")]
+    # Management snapshots remain available to the host; readers get no schema,
+    # vocabulary or empty-state investigations.
+    common = [str(destination / "directory.md")]
     tasks = []
     for index, segment in enumerate(segments, 1):
         task_id = f"{index:04d}-reading"
@@ -253,20 +255,26 @@ def export_initial_reading_tasks(db_path, output_dir, resource_root, preparation
                 if window["clause_id"] == entry["object_id"]:
                     guide.append(f"\n- [{window['clause_start']},{window['clause_end']})：{window['file']}\n")
         files[guide_name] = "".join(guide).encode("utf-8")
-        task = {"format_version": 1, "task_id": task_id,
-                "role": "reading_and_synthesis" if len(segments) == 1 else "segment_reading",
+        task = {"format_version": 2, "task_id": task_id, "role": "reader",
                 "main_reading_clauses": [{"object_id": e["object_id"], "record_id": e["record_id"]} for e in segment],
                 "context_clauses": context, "windows": windows,
-                "input_files": common + [str(destination / guide_name)] + [w["file"] for w in windows] + [e["text_file"] for e in context],
+                "input_files": list(dict.fromkeys(common + [str(destination / guide_name)] + [w["file"] for w in windows] +
+                                     [e["text_file"] for e in context] + [e["text_file"] for e in segment])),
                 "output_file": str(destination / f"{index:04d}-notes.md"),
-                "preparation_file": str(output) if len(segments) == 1 else None}
+                "instructions_file": str(destination / f"{task_id}-instructions.md")}
+        details = f"实例 reader-{index}；task_id={task_id}。\n\n" + re.sub(r"(?m)^#{1,2} ", "#### ", "".join(guide)) + \
+            "\n笔记栏目：阅读范围、本段概况、主体/对象与组织方式、定义与共同限定、条件与时间联系、跨段引用与问题。\n" + \
+            "返回已读/未读 Unicode 全文范围 {text_version_id,start_offset,end_offset}、issues 字符串清单。"
+        files[f"{task_id}-instructions.md"] = instructions(resources, "reader", common_context, task, details,
+                                                           on_demand=[e["text_file"] for e in segment]).encode("utf-8")
         files[f"{task_id}.json"] = _json_bytes(task)
         tasks.append(task)
-    manifest = {"format_version": 1, "case_id": basis["case_id"],
+    manifest = {"format_version": 2, "case_id": basis["case_id"],
                 "checked_sequence": basis["quality"]["current_sequence"],
                 "target_chars": target_chars, "window_chars": window_chars,
                 "selected_text_versions": sorted(selected), "materials": material_list,
-                "directory": directory, "tasks": tasks, "preparation_file": str(output),
+                "directory": directory, "tasks": tasks, "preparation_files": {k: str(v) for k, v in outputs.items()},
+                "task_context_file": str(Path(task_context_file).resolve()),
                 "references": [str(path) for path in [*references, *summarizer_inputs]]}
     directory_text = ["# 全文阅读目录\n\n字符位置为 Unicode 半开区间。素材展示顺序不表示法律优先顺位。"
                       "本清单仅列已提供材料；引用但未提供的材料由实际阅读笔记记录。\n"]
@@ -328,56 +336,77 @@ def check_reading_versions(db_path, manifest_file):
             "versions_match": True, "additional_text_versions": sorted(set(current) - old_text_ids)}
 
 
-def export_initial_synthesis_task(db_path, manifest_file, output_file):
-    """Collect existing notes into one synthesis assignment after host inspection.
+def export_initial_synthesis_tasks(db_path, manifest_file, output_dir, reader_reports, resource_root):
+    """Publish independent records/overview assignments after declared coverage.
 
-    File existence is checked here; actual reading and question handling must be
-    inspected by the host/reader. A single reading task continues on its same
-    reader; this helper never spawns agents or writes preparation to SQLite.
+    This checks reported ranges, not whether a model actually read the text.
     """
     manifest_path = Path(manifest_file).resolve()
     contract = Path(db_path).resolve().parent
-    destination = Path(output_file).resolve()
-    if not manifest_path.is_relative_to(contract / "tasks") or destination.parent != manifest_path.parent:
-        fail("INVALID_ARGUMENT", "/reading/synthesis", "use the original contract task directory")
+    from .task_preparation import (binding, context_text, instructions, output_directory,
+                                   validate_reader_reports)
+    destination = output_directory(output_dir, contract)
     manifest = _manifest(manifest_path, contract)
     check_reading_versions(db_path, manifest_path)
     # Shared identities may have changed while readers worked. Re-export them
     # into this synthesis input so the reader reuses the latest formal objects.
     basis, _, exports = _snapshot(db_path)
-    notes = []
-    for task in manifest["tasks"]:
-        path = Path(task["output_file"]).resolve()
-        if not path.is_relative_to(manifest_path.parent) or not path.is_file():
-            fail("FILE_ERROR", "/reading/notes", "all assigned note files must be present; return missing ranges to readers")
-        try:
-            contents = _bytes(path).decode("utf-8", errors="strict")
-        except UnicodeError as exc:
-            fail("FILE_ERROR", str(path), str(exc))
-        if not contents.strip():
-            fail("FILE_ERROR", "/reading/notes", "empty note file; return unread ranges to reader")
-        notes.append(str(path))
-    preparation = Path(manifest["preparation_file"]).resolve()
-    if not preparation.is_relative_to(contract / "submissions") or preparation.exists():
-        fail("FILE_EXISTS", "/reading/preparation_file", "query/replay an existing preparation instead of creating duplicate identities")
-    if destination.exists() or destination.suffix != ".json":
-        fail("FILE_EXISTS", "/reading/synthesis", "use an unused JSON task file")
-    context_name = destination.stem + "-shared.json"
-    context = {key: exports[key] for key in ("overview", "events", "shared-objects", "vocabulary")}
-    task = {"format_version": 1, "task_id": destination.stem, "role": "synthesis",
-            "continue_reader_task_id": manifest["tasks"][0]["task_id"] if len(manifest["tasks"]) == 1 else None,
-            "case_id": manifest["case_id"], "checked_sequence": basis["quality"]["current_sequence"],
-            "input_files": manifest["references"] + [str(manifest_path), str(manifest_path.parent / "directory.md"),
-                           str(manifest_path.parent / "materials.json"), str(manifest_path.parent / "clauses.json"),
-                           str(manifest_path.parent / context_name)] + notes,
-            "output_file": str(preparation), "covered_clauses": []}
+    notes = validate_reader_reports(manifest, reader_reports)
+    files, tasks = {}, []
+    resources = Path(resource_root).resolve()
+    common_context = context_text(manifest["task_context_file"], contract)
+    shared_name = "shared-identities.json"
+    # Full formal query records, including evidence and provenance. No filtering.
+    files[shared_name] = _json_bytes({k: exports[k] for k in ("events", "shared-objects")})
+    overview_name = "previous-overview.json"
+    if exports["overview"]["items"]:
+        files[overview_name] = _json_bytes(exports["overview"])
+    reread = [e["text_file"] for e in manifest["directory"]] + [m["text_file"] for m in manifest["materials"]]
+    vocab_hash = exports["vocabulary"]["items"][0]["hash"]
+    for index, purpose in enumerate(("records", "overview"), 1):
+        task_id = "summarizer-" + purpose
+        output = Path(manifest["preparation_files"][purpose]).resolve()
+        if not output.is_relative_to(contract / "submissions") or output.exists():
+            fail("FILE_EXISTS", "/preparation_files/" + purpose, "submission path occupied; replay or correct existing result")
+        inputs = notes + [str(manifest_path.parent / "directory.md")] + reread
+        on_demand = reread.copy()
+        if purpose == "records":
+            inputs += [str(destination / shared_name), str(manifest_path.parent / "clauses.json"),
+                       str(resources / "references/data-formats.md"),
+                       str(resources / "skills/legal-case/references/helper-tools.md"),
+                       str(resources / "skills/legal-case/examples/preparation.py")]
+            on_demand += inputs[-4:]
+        elif exports["overview"]["items"]:
+            inputs += [str(destination / overview_name)]
+        task = {"format_version": 2, "task_id": task_id, "role": "summarizer", "purpose": purpose,
+                "continue_reader_task_id": manifest["tasks"][0]["task_id"] if purpose == "records" and len(manifest["tasks"]) == 1 else None,
+                "case_id": manifest["case_id"], "checked_sequence": basis["quality"]["current_sequence"],
+                "input_files": list(dict.fromkeys(inputs)), "output_file": str(output), "covered_clauses": [],
+                "instructions_file": str(destination / f"{task_id}-instructions.md"),
+                "binding_file": str(destination / f"{task_id}-binding.json")}
+        fixed = binding("preparation_" + purpose, task, vocab_hash, "summarizer-" + str(index),
+                        manifest["selected_text_versions"])
+        files[f"{task_id}-binding.json"] = _json_bytes(fixed)
+        task["input_files"].append(task["binding_file"])
+        details = "已检查固定输入哈希、当前素材/文本/条款版本、笔记非空和回报范围完整；检查不证明实际读全或语义准确。\n" + \
+            "先读笔记范围和正文，处理可见矛盾；下列为 reader 实际回报（非工具认定）：\n" + json.dumps(reader_reports, ensure_ascii=False, indent=2)
+        files[f"{task_id}-instructions.md"] = instructions(resources,
+            "summarizer" if purpose == "records" else "summarizer-overview", common_context, task, details,
+            on_demand=on_demand, binding_data=fixed).encode("utf-8")
+        files[f"{task_id}.json"] = _json_bytes(task)
+        tasks.append(task)
     header, _ = _all(db_path, view="progress")
-    if header["case_id"] != basis["case_id"] or header["quality"]["current_sequence"] != task["checked_sequence"]:
+    if header["case_id"] != basis["case_id"] or header["quality"]["current_sequence"] != basis["quality"]["current_sequence"]:
         fail("STALE_REVISION", "/reading/synthesis", "case changed before publishing synthesis task")
     # Repeat the input-version check against the synthesis snapshot, since a
     # change could have happened between the initial check and shared export.
     freshness = check_reading_versions(db_path, manifest_path)
-    if freshness["current_sequence"] != task["checked_sequence"]:
+    if freshness["current_sequence"] != basis["quality"]["current_sequence"]:
         fail("STALE_REVISION", "/reading/synthesis", "case changed during synthesis preparation")
-    _publish(manifest_path.parent, {context_name: _json_bytes(context), destination.name: _json_bytes(task)})
-    return task
+    created = _publish(destination, files)
+    return {"manifest_file": str(manifest_path), "tasks": tasks, "files": created}
+
+
+def export_initial_synthesis_task(*args, **kwargs):
+    """Reject the historical single-summarizer handoff explicitly."""
+    fail("UNSUPPORTED_VERSION", "/reading/synthesis", "use v2 dual synthesis with explicit reader reports")

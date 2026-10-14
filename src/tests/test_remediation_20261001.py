@@ -20,7 +20,7 @@ from unittest.mock import patch
 
 from legal.formats import Invalid, exclusive_write, new_id
 from legal.group import group
-from legal.handoff import export_extraction_tasks
+from workflow_inputs import export_extraction_tasks
 from legal.model import write
 from legal.query import query
 from legal.splitter import split_text
@@ -31,6 +31,14 @@ RESOURCE_ROOT = Path(os.environ.get("LEGAL_RESOURCE_ROOT", SRC))
 
 
 class ArticleRegression(unittest.TestCase):
+    def test_chinese_reference_sentence_inside_article_does_not_split(self):
+        text = "# 第四条 付款\n甲方支付货款。\n# 第五条 共同限定\n第四条暂停条件分别适用于各包，不因另一包暂停。\n第四条规定的基准继续适用。\n"
+        clauses = self.check(text, ["第四条", "第五条"])
+        self.assertIn("第四条暂停条件", clauses[1]["text"])
+        # A title on the next line remains a provision even with these words.
+        marked = "# 第四条 规定的适用\n甲方付款。\n# 第五条 交付\n乙方交付。\n"
+        self.check(marked, ["第四条", "第五条"])
+
     def check(self, text, numbers):
         clauses = split_text(text)
         self.assertEqual([c["original_number"] for c in clauses], numbers)
@@ -382,11 +390,11 @@ class ModelingExamples(ExampleFixture):
             if calls == 3:
                 raise Invalid("FILE_ERROR", str(path), "simulated write failure")
             return exclusive_write(path, data)
-        with patch("legal.handoff.exclusive_write", side_effect=fail_third):
+        with patch("legal.task_files.exclusive_write", side_effect=fail_third):
             with self.assertRaises(Invalid) as caught:
                 export_extraction_tasks(self.db, plans, self.root / "tasks/0003", RESOURCE_ROOT)
         self.assertEqual(caught.exception.code, "FILE_ERROR")
-        self.assertEqual(list((self.root / "tasks/0003").iterdir()), [])
+        self.assertFalse((self.root / "tasks/0003").exists())
         self.assertEqual(self.db.read_bytes(), before)
         self.assertFalse(Path(plans[0]["output_file"]).exists())
 

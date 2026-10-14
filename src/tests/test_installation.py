@@ -31,7 +31,7 @@ class StandaloneInstallation(unittest.TestCase):
             for name in ("legal", "skills", "references"):
                 shutil.copytree(SRC / name, source / name, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
             (source / "scripts").mkdir()
-            for name in ("build_release.py", "install_release.py", "verify_registration.py"):
+            for name in ("build_release.py", "install_release.py", "verify_registration.py", "prepare_task.py"):
                 shutil.copy2(SRC / "scripts" / name, source / "scripts" / name)
             for name in ("pyproject.toml", "README.md", "LICENSE"):
                 shutil.copy2(SRC / name, source / name)
@@ -63,6 +63,16 @@ class StandaloneInstallation(unittest.TestCase):
                                 "--install-root", install, "--python", sys.executable, "--wheel", wheels[0])
             self.assertEqual(installed["host_registration"], "pending")
             runtime = json.loads((install / "runtime.json").read_text(encoding="utf-8"))
+            self.assertEqual(json.loads((install / "workspaces.json").read_text()), {"format_version": 1, "workspaces": []})
+            registry = install / "vocabularies/custom.txt"
+            registry.write_bytes((str(work / "vocabulary.json") + "\r\n\r\n").encode())
+            configuration = install / "workspaces.json"
+            configuration.write_text(json.dumps({"format_version": 1, "workspaces": [{"workspace_root": str(work),
+                "contract_root": str(work / "contracts"), "vocabulary_list": str(registry)}]}, ensure_ascii=False))
+            preserved = configuration.read_bytes(), registry.read_bytes()
+            receipt(sys.executable, source / "scripts/install_release.py", "--install-root", install,
+                    "--python", sys.executable, "--wheel", wheels[0], "--upgrade")
+            self.assertEqual((configuration.read_bytes(), registry.read_bytes()), preserved)
             for name in SKILLS:
                 (host / name).symlink_to(install / "skills" / name, target_is_directory=True)
 
@@ -84,8 +94,10 @@ class StandaloneInstallation(unittest.TestCase):
                 body = skill.read_text(encoding="utf-8")
                 snippet = re.search(r"^```python\n(.*?)^```", body, re.M | re.S).group(1)
                 snippet = snippet.replace(f'"/host/skills/{name}/SKILL.md"', json.dumps(str(skill)))
-                paths = run(runtime["python"], "-c", snippet).splitlines()
-                self.assertEqual(paths, [str(install / "runtime.json"), str(install / "references")])
+                snippet = snippet.replace("/absolute/session/workspace", str(work))
+                boot = json.loads(run(sys.executable, "-c", snippet))
+                self.assertEqual(boot["result"]["install_root"], str(install))
+                self.assertEqual(boot["result"]["workspace_root"], str(work))
                 for relative in re.findall(r"`((?:\.\./)+[^`]+)`", body):
                     self.assertTrue((skill.resolve().parent / relative).exists(), (name, relative))
 
@@ -137,7 +149,7 @@ class StandaloneInstallation(unittest.TestCase):
             # its venv. Neither may recover dependencies from removed source.
             self.assertEqual(set(commands), {"legal-case", "legal-vocab", "legal-preprocess"})
             helpers = install / "skills/legal-case/scripts"
-            for name in ("find_quote.py", "build_submission.py"):
+            for name in ("find_quote.py", "build_submission.py", "complete_task.py"):
                 self.assertTrue((helpers / name).is_file())
                 run(runtime["python"], helpers / name, "--help")
             self.assertTrue((install / "skills/legal-case/references/helper-tools.md").is_file())
