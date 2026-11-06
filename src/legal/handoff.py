@@ -163,12 +163,16 @@ def export_extraction_tasks(db_path, plans, output_dir, resource_root, clause_id
         outputs.add(output)
         task = {"format_version": 1, "task_id": task_id, "unit_id": unit,
                 "responsible_clauses": plan["responsible_clauses"], "context_clauses": plan["context_clauses"],
-                "input_files": [str(destination / name) for name in (*exports, "extraction.md", "data-formats.md", group_name)] + [str(source) for source in role_inputs],
+                # Overview is already delivered verbatim in the shared body.
+                # Events are contained in shared-objects, without a second read.
+                "input_files": [str(destination / name) for name in (*[n for n in exports if n not in {"events.json", "overview.json"}],
+                                "extraction.md", "data-formats.md", group_name)] + [str(source) for source in role_inputs],
                 "output_file": str(output)}
         binding_name = task_id + "-binding.json"
         instructions_name = task_id + "-instructions.md"
         readable_name = task_id + "-clauses.md"
-        clause_records = [current[r["object_id"]] for r in plan["responsible_clauses"] + plan["context_clauses"]]
+        clause_records = list({r["object_id"]: current[r["object_id"]] for r in
+                              plan["responsible_clauses"] + plan["context_clauses"]}.values())
         files[readable_name] = "\n\n".join(f"## {c['object_id']} / {c['record_id']}\n\n{c['data']['text']}" for c in clause_records).encode("utf-8")
         helper_task = {**task, "role": "extractor", "purpose": "extraction", "case_id": basis["case_id"],
                        "instructions_file": str(destination / instructions_name), "binding_file": str(destination / binding_name)}
@@ -179,7 +183,11 @@ def export_extraction_tasks(db_path, plans, output_dir, resource_root, clause_id
         files[instructions_name] = instructions(resources, "extractor", common_context, helper_task,
             "负责条款的全部规定须完整提取一次，unit_id 不限制输出单元。\n负责：" + json.dumps(plan["responsible_clauses"]) +
             "\n仅供理解：" + json.dumps(plan["context_clauses"]),
-            on_demand=[str(destination / "clauses.json"), str(destination / "data-formats.md"), *[str(p) for p in role_inputs]],
+            on_demand=[str(destination / "clauses.json"), str(destination / "data-formats.md"),
+                       str(destination / "extraction.md"), *[str(p) for p in role_inputs]],
+            file_uses={str(destination / group_name): "仅供程序读取或核对分组字段；完整负责条款及必要上下文已在 clauses.md 给出，不重复通读"},
+            context_sources={str(destination / "shared-objects.json"): (files["shared-objects.json"], "records"),
+                             str(destination / "frozen-vocabulary.json"): (files["frozen-vocabulary.json"], "vocabulary")},
             binding_data=fixed).encode("utf-8")
         task_name = f"{task_id}.json"
         if task_name in files:

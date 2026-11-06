@@ -266,7 +266,8 @@ def export_initial_reading_tasks(db_path, output_dir, resource_root, preparation
             "\n笔记栏目：阅读范围、本段概况、主体/对象与组织方式、定义与共同限定、条件与时间联系、跨段引用与问题。\n" + \
             "返回已读/未读 Unicode 全文范围 {text_version_id,start_offset,end_offset}、issues 字符串清单。"
         files[f"{task_id}-instructions.md"] = instructions(resources, "reader", common_context, task, details,
-                                                           on_demand=[e["text_file"] for e in segment]).encode("utf-8")
+            on_demand=[e["text_file"] for e in segment],
+            file_uses={str(destination / guide_name): "窗口顺序已在本任务正文给出；仅在任务恢复时查阅，不重复读"}).encode("utf-8")
         files[f"{task_id}.json"] = _json_bytes(task)
         tasks.append(task)
     manifest = {"format_version": 2, "case_id": basis["case_id"],
@@ -358,6 +359,10 @@ def export_initial_synthesis_tasks(db_path, manifest_file, output_dir, reader_re
     shared_name = "shared-identities.json"
     # Full formal query records, including evidence and provenance. No filtering.
     files[shared_name] = _json_bytes({k: exports[k] for k in ("events", "shared-objects")})
+    # Preserve the historical combined export for compatibility; the role's
+    # single reading source is the complete node snapshot, already with events.
+    identity_name = "shared-objects.json"
+    files[identity_name] = _json_bytes(exports["shared-objects"])
     overview_name = "previous-overview.json"
     if exports["overview"]["items"]:
         files[overview_name] = _json_bytes(exports["overview"])
@@ -371,7 +376,7 @@ def export_initial_synthesis_tasks(db_path, manifest_file, output_dir, reader_re
         inputs = notes + [str(manifest_path.parent / "directory.md")] + reread
         on_demand = reread.copy()
         if purpose == "records":
-            inputs += [str(destination / shared_name), str(manifest_path.parent / "clauses.json"),
+            inputs += [str(destination / identity_name), str(manifest_path.parent / "clauses.json"),
                        str(resources / "references/data-formats.md"),
                        str(resources / "skills/legal-case/references/helper-tools.md"),
                        str(resources / "skills/legal-case/examples/preparation.py")]
@@ -392,7 +397,8 @@ def export_initial_synthesis_tasks(db_path, manifest_file, output_dir, reader_re
             "先读笔记范围和正文，处理可见矛盾；下列为 reader 实际回报（非工具认定）：\n" + json.dumps(reader_reports, ensure_ascii=False, indent=2)
         files[f"{task_id}-instructions.md"] = instructions(resources,
             "summarizer" if purpose == "records" else "summarizer-overview", common_context, task, details,
-            on_demand=on_demand, binding_data=fixed).encode("utf-8")
+            on_demand=on_demand, binding_data=fixed,
+            context_sources={str(destination / identity_name): (files[identity_name], "records")} if purpose == "records" else None).encode("utf-8")
         files[f"{task_id}.json"] = _json_bytes(task)
         tasks.append(task)
     header, _ = _all(db_path, view="progress")

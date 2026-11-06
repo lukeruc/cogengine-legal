@@ -61,20 +61,67 @@ def overview_context(snapshot):
     return result
 
 
-def instructions(resources, template, context, task, details, on_demand=(), binding_data=None):
+def context_access(resources, sources):
+    """Human reading routes for full, unfiltered machine snapshots.
+
+    sources maps an authorized path to (serialized snapshot, records/vocabulary).
+    Only commands and purposes are generated; no relevance filtering occurs.
+    """
+    tool = resources / "skills/legal-case/scripts/read_context.py"
+    if not tool.is_file():
+        fail("FILE_ERROR", str(tool), "installed context reading helper missing")
+    uses, lines = {}, ["### 共享资料读取\n",
+        "以下为文件辅助入口，允许执行，不授予源码阅读权限。仅读白名单中的固定文件；不访问正式 CLI 或数据库。"]
+    for path, (raw, mode) in sources.items():
+        base = [sys.executable, str(tool)]
+        fixed = ["--input", path, "--sha256", digest(raw)]
+        snapshot = loads(raw)
+        items = snapshot["items"]
+        if mode == "records":
+            inline = json.dumps(items[0], ensure_ascii=False, indent=2) if len(items) == 1 else None
+            if inline is not None and items[0]["data"]["node_kind"] == "contract" and len(inline) <= 6000:
+                uses[path] = "完整合同节点已在下文给出；仅在恢复或核对具体字段时回读，不重复打印"
+                lines.append("既有共享身份仅含下列完整合同节点，复用它，不另建：\n" + inline)
+            else:
+                uses[path] = "先用下列 list 读全部身份目录，再用 show 读候选完整记录与出处；不整体打印快照"
+                lines.append("完整身份目录（包含事件；合法空目录表示没有既有节点）：" +
+                             json.dumps(base + ["list", *fixed], ensure_ascii=False))
+            lines.append("固定记录全文：" + json.dumps(base + ["show", *fixed, "--record-id", "<目录中的 record_id>"], ensure_ascii=False))
+        else:
+            uses[path] = "先读全部单元完整定义及全部槽目录；判断选用/排除、缺口时用 show 核对完整定义和实际归属，不按名称猜测"
+            for kind, label in (("unit", "全部单元完整定义及归属"), ("slot", "全部槽目录及归属")):
+                lines.append(label + "：" + json.dumps(base + ["list", *fixed, "--kind", kind], ensure_ascii=False))
+            lines.append("完整槽及其 assignments：" + json.dumps(base + ["show", *fixed, "--kind", "slot", "--item-id", "<槽 ID>"], ensure_ascii=False))
+    lines.append("每次返回 content.text（确定性 JSON 的连续字符片段）、start/end/total_chars 和 next_cursor。默认内容预算 6000 字符；有 next_cursor 时，保持原命令的文件/操作/选择参数并增加 --cursor 原值续读。完整走完目录；候选记录须读完全部页，不能只凭目录名称认定同一性或不存在。")
+    lines.append("content.complete 只表示该页是否独自包含完整内容，末页 next_cursor=null 不证明读过此前页。宿主截断时用同一游标降低 --max-chars 重读该页，不跳页。片段依次拼接可恢复完整 JSON；不要把片段当独立对象解析。来源仍用固定记录和原文锚，不用目录或游标作证据。")
+    lines.append("show 保留完整 data/evidence/provenance 与快照其他字段；名称相近不等于相同，名称不同不自动排除。必要时扩大完整记录阅读范围；通用槽为未出现在任何 assignment 中的槽。文件变更、缺字段、未知 ID 或游标错误交主会话，不能以空结果兜底。")
+    lines.append("身份目录只展示短字段和最多两个出处位置，source_position_count 给出位置总数，unexpanded_fields 明确列出未展开字段。未展开不等于缺失，判断依赖这些字段时必须 show；完整记录及出处始终可读取。")
+    return uses, "\n\n".join(lines)
+
+
+def instructions(resources, template, context, task, details, on_demand=(), binding_data=None,
+                 file_uses=None, context_sources=None):
     fixed = file_text(resources / "skills/legal-case/templates" / (template + ".md"))
     fixed = fixed.split("## 二、共享任务总体上下文", 1)[0].rstrip()
     body = fixed + "\n\n## 二、共享任务总体上下文\n\n" + context + "\n\n## 三、个别任务要求\n\n"
     body += f"task_id：{task['task_id']}；职责：{task.get('purpose', 'reading')}。\n\n{details}\n\n"
+    uses = dict(file_uses or {})
+    access = ""
+    if context_sources:
+        context_uses, access = context_access(resources, context_sources)
+        uses.update(context_uses)
     body += "### 可读文件白名单\n\n"
     for path in task["input_files"]:
         if path == task.get("binding_file"):
             usage = "仅供 complete_task 程序读取固定参数；模型无需探测结构，不修改"
+        elif path in uses:
+            usage = uses[path]
         elif path in on_demand:
             usage = "按需：具体歧义/依据不足时定向回读原文；构造时查适用格式/样例，程序可读完整快照"
         else:
             usage = "开始阅读：完整内容；用于本任务判断与理解"
         body += f"- `{path}`：{usage}。\n"
+    body += "\n" + access + "\n"
     body += f"\n唯一输出：`{task['output_file']}`。工作文件仅限 `{Path(task['instructions_file']).parent / (task['task_id'] + '-work')}`，可创建并读取自己的工作文件。\n"
     if binding_data:
         tool = resources / "skills/legal-case/scripts/complete_task.py"

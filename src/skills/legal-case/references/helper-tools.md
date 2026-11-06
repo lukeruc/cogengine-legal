@@ -17,6 +17,28 @@
 
 两个脚本按需用于已有任务，能直接生成正确 JSON 时可以不用。sub-agent 决定建模内容、引句、来源和完成声明；主会话调用正式 CLI 写入、接收回执及对账。辅助成功只表示任务文件处理成功。
 
+## 固定共享资料读取
+
+`scripts/read_context.py` 只读主会话明确交付的完整共享对象或冻结词表快照；不调用 CLI、数据库、外部程序或网络，不扫描目录、不沿记录引用打开其他文件。它用于主体／事件 summarizer 及 extractor，reader 和概要 summarizer 不需要。主会话已在第三部分预填解释器、脚本、文件绝对路径、文件 SHA-256 和命令；执行不授予源码读取权限。
+
+```text
+<python> <read_context.py> list --input <shared-objects.json> --sha256 <文件哈希>
+<python> <read_context.py> show --input <shared-objects.json> --sha256 <文件哈希> --record-id <固定记录ID>
+<python> <read_context.py> list --input <frozen-vocabulary.json> --sha256 <文件哈希> --kind unit
+<python> <read_context.py> list --input <frozen-vocabulary.json> --sha256 <文件哈希> --kind slot
+<python> <read_context.py> show --input <frozen-vocabulary.json> --sha256 <文件哈希> --kind slot --item-id <槽ID>
+```
+
+身份 list 无 kind 时列全部节点，也可用 contract/subject/event/defined_value/external_benchmark 定向列出；先读完整目录，show 返回快照中的完整记录，不按名称搜索或合并。目录包含原名称、参与者、包/阶段及最多两个出处位置，source_position_count 表示位置总数。数据字段序列化超过 256 字符时整个字段留到 show，unexpanded_fields 明确列出字段路径；超过两个位置时也标记 /provenance。未展开不等于缺失，不能用缺席字段排除候选；`requires_show=true` 表示仍须取得全文。同对象同版本且内容一致才去重；冲突报错。新案仅有合同节点时派发已含完整记录，无需重复读取。
+
+词表 list unit 给全部单元完整定义及各自 assignments；list slot 给全部槽 ID、原名称、已有别名、实际 assignments、general（无任何归属）和 requires_show。show unit/slot 返回 `{item,assignments}`，item 保留全部原字段。词表列表顺序不变。选用、排除及缺口判断应核对完整定义、schema、归属及可能相关的其他槽，目录名称不能证明不可表达。
+
+成功回执含 source（file/sha256/case_id/checked_sequence，词表另有 vocabulary_hash）、operation、selection、content 和 next_cursor。content.text 是确定性 JSON 序列化的连续 Unicode 片段，start/end 是半开区间，total_chars 是完整序列化长度。即使单个字段很长也不丢内容。按原参数加 `--cursor <next_cursor>` 读后续页，所有 text 按顺序拼接才得到完整 JSON；片段不是独立对象。默认 `--max-chars 6000`，允许 1—60000，限制内容字符而非含外层转义及回执包装的输出总量或 token 数。
+
+`content.complete=true` 仅在该页包含全部内容时成立；末页 next_cursor=null 不证明已读此前页。宿主截断时保留当前页游标、降低 max-chars 重读，不直接续到下一页。游标绑定文件路径、哈希、操作及选择；同输入同页可重放，改变预算不改变起点。目录和游标不是证据，引用仍回固定记录与原文。
+
+成功退出 0；参数、结构、引用或版本错误退出 2，文件读取错误退出 3，失败回执为 `{ok:false,errors:[{code,path,message,...}],errors_truncated:false}`。`SNAPSHOT_CHANGED` 为文件与预填哈希不符，`SNAPSHOT_CONFLICT` 为对象/版本内容冲突，`INVALID_CURSOR` 为游标不匹配或位置无效，`REFERENCE_NOT_FOUND` 为准确 ID 不存在；其余结构/参数错误为 `INVALID_ARGUMENT`，JSON 错误为 `INVALID_JSON`。报告具体路径给主会话，缺字段不当作空结果；合法空目录返回完整 `[]`。
+
 ## 主会话交付与角色调用
 
 主会话核验安装的 runtime.json，并直接交付其 python 启动路径、已安装脚本绝对路径和输入/输出绝对路径直接写在现有任务说明中。脚本位于本 skill 真实目录的 `scripts/find_quote.py` 和 `scripts/build_submission.py`；共用模块装入同一 .venv。保留环境内 Python 的启动路径，不把其符号链接解析到基础解释器。用参数数组运行，中文与空格路径保持一个参数。

@@ -187,7 +187,7 @@ cwd  = "/absolute/contract-work-directory"
 
 因此无须激活环境、设置 `PYTHONPATH`，也无须让宿主切换 Python。相对输入先按用户原工作目录解析；传给 CLI 的合同工作副本路径使用绝对路径。含空格或中文的路径是单个参数，不把整条调用拼成 shell 字符串。安装信息缺失、根路径不符或命令失效时，skill 应报告安装问题，不能改用 PATH 上的同名工具。
 
-入库 skill 的 `find_quote.py`、`build_submission.py` 和 `complete_task.py` 随完整目录安装，共用模块随 wheel 装入同一环境。主会话交付专用 Python、脚本和任务文件的绝对路径及适用说明；sub-agent 按需调用精确引句定位、固定字段修订及提交构造。用法见 [辅助脚本说明](skills/legal-case/references/helper-tools.md)。这些辅助脚本只处理文件，正式写入和数据库操作由主会话完成。runtime 的 commands 保持三个正式 CLI。
+入库 skill 的 `find_quote.py`、`build_submission.py`、`complete_task.py` 和 `read_context.py` 随完整目录安装，共用模块随 wheel 装入同一环境。主会话交付专用 Python、脚本和任务文件的绝对路径及适用说明；sub-agent 按需调用精确引句定位、固定字段修订及提交构造。`read_context.py` 用固定文件哈希分页读取共享身份目录、完整记录和冻结词表，避免反复打印大快照。用法见 [辅助脚本说明](skills/legal-case/references/helper-tools.md)。这些辅助脚本只处理文件，正式写入和数据库操作由主会话完成。runtime 的 commands 保持三个正式 CLI。
 
 已有安装要采用这次源码变更时，重新构建 wheel，再用安装命令的 `--upgrade` 更新程序及 skill。安装脚本默认复用同版本程序；即使版本号相同，更新源码构建的程序副本也要使用 `--upgrade`，否则新脚本可能缺少对应共用模块。
 

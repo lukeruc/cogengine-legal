@@ -113,7 +113,7 @@
 
 `synthesis` 沿用 manifest 中的总体说明及 `preparation_files`，调用时不重复传入这两个字段。成功返回两个独立任务，`purpose=records/overview`，固定任务 ID 为 `summarizer-records`、`summarizer-overview`。程序生成各自 instructions 和 binding，绑定中写入初读时指定的最终提交路径；此时两个提交 JSON 仍未生成。
 
-主会话按 `result.tasks` 直接读取 instructions，交付两个 summarizer。单段时 records 任务的 `continue_reader_task_id` 指原 reader，应沿用该会话；overview 另派。二者使用同批笔记与固定原文，互不依赖对方的中间产物。records 取得完整既有身份及适用来源/构造规则；overview 只形成六栏目概要，不需要节点、值、锚的完整业务格式。
+主会话按 `result.tasks` 直接读取 instructions，将完整正文交付两个 summarizer，不再要求角色打开 instructions。收笔记按真实范围和问题摘要核验，不默认打印全部笔记。单段时 records 任务的 `continue_reader_task_id` 指原 reader，应沿用该会话；overview 另派。二者使用同批笔记与固定原文，互不依赖对方的中间产物。records 取得完整既有身份及适用来源/构造规则；overview 只形成六栏目概要，不需要节点、值、锚的完整业务格式。
 
 ## 3. 文件由谁生成，何时写入
 
@@ -138,3 +138,5 @@
 - 固定素材、文本或条款版本改变：重新准备受影响材料。无关提交只改变序号不使有效笔记失效。
 
 v1 manifest 不作为 v2 读取。旧成果恢复时重新导出 v2，复用明确验证有效的笔记及回执，保留旧库和旧文件。辅助程序检查文件、固定版本和范围声明，不证明实际阅读或语义无遗漏。
+
+多段归纳另开独立会话，不复用任何 reader 历史；概要任务始终独立。主体／事件任务的既有身份正常来源为 shared-objects.json（已含事件），按派发的 read_context 入口读目录与候选完整记录；旧 shared-identities.json 仅兼容保留，不列入正常白名单。

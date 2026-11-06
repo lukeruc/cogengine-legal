@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -149,7 +150,7 @@ class StandaloneInstallation(unittest.TestCase):
             # its venv. Neither may recover dependencies from removed source.
             self.assertEqual(set(commands), {"legal-case", "legal-vocab", "legal-preprocess"})
             helpers = install / "skills/legal-case/scripts"
-            for name in ("find_quote.py", "build_submission.py", "complete_task.py"):
+            for name in ("find_quote.py", "build_submission.py", "complete_task.py", "read_context.py"):
                 self.assertTrue((helpers / name).is_file())
                 run(runtime["python"], helpers / name, "--help")
             self.assertTrue((install / "skills/legal-case/references/helper-tools.md").is_file())
@@ -184,6 +185,16 @@ class StandaloneInstallation(unittest.TestCase):
                 "sys.argv=sys.argv[1:]; runpy.run_path(sys.argv[0],run_name='__main__')"
             )
             before = database.read_bytes()
+            nodes = receipt(commands["legal-case"], "query", "--db", database, "--view", "records", "--kind", "node")
+            shared = put("共享身份.json", {"case_id": nodes["case_id"],
+                         "checked_sequence": nodes["quality"]["current_sequence"], "items": nodes["items"]})
+            shared_hash = hashlib.sha256(shared.read_bytes()).hexdigest()
+            listing = receipt(runtime["python"], "-c", guard, helpers / "read_context.py", "list",
+                              "--input", shared, "--sha256", shared_hash)
+            self.assertEqual(len(json.loads(listing["content"]["text"])), 1)
+            record = receipt(runtime["python"], "-c", guard, helpers / "read_context.py", "show",
+                             "--input", shared, "--sha256", shared_hash, "--record-id", nodes["items"][0]["record_id"])
+            self.assertEqual(json.loads(record["content"]["text"]), nodes["items"][0])
             receipt(runtime["python"], "-c", guard, helpers / "find_quote.py", "--clauses", snapshot, "--input", requests, "--output", anchors)
             assembled = receipt(runtime["python"], "-c", guard, helpers / "build_submission.py", "--header", header,
                                 "--records", records, "--records", anchors, "--output", submission)

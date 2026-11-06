@@ -55,7 +55,7 @@ raise SystemExit(result.returncode)
 2. 各份素材经预处理 skill 取得文本与元数据，用 `register` 登记原件和全文，再用 `split` 切分。异常影响阅读时依既有规则要求更好源件。
 3. 进入初读才读 `references/preparation.md` 和 `references/reading-inputs.md`。用 reading 固定辅助导出 v2 原文窗口及 reader 三部分正文；reader 全读并记笔记。收齐真实范围后用 synthesis 导出两个独立 summarizer：主体/事件提交不含 overview，概要提交 records=[]。单段 reader 原会话接续主体/事件，另派概要任务。两份分别 write，顺序不限；失败仅修该份，不回滚成功结果。均成功、主读实际读全且问题明确处置后，查询正式概要作为下游共同背景及完整共用身份。
 4. 按不重叠条款批次，用 `prepare_task.py tagging` 准备 tagger 输入与派发正文，调用见 `references/handoff.md`，分类职责见 `references/tagging.md`。主会话逐文件 `write` 标签修订及无匹配缺口。
-5. 运行 `group` 导出逐字分组；按 `references/handoff.md` 指定责任计划，用 `prepare_task.py extraction` 导出完整任务及输入清单。派发首先列出负责条款及全部规定的完整提取责任。任务 `unit_id` 仅提供分组上下文，不限制输出关系的单元；比较负责条款集合，保证每条款只有一个完整提取责任。冻结词表和共用对象完整查询结果供 extractor 读取，多标签副本只作上下文。
+5. 运行 `group` 导出逐字分组；按 `references/handoff.md` 指定责任计划，用 `prepare_task.py extraction` 导出完整任务及输入清单。派发首先列出负责条款及全部规定的完整提取责任。任务 `unit_id` 仅提供分组上下文，不限制输出关系的单元；比较负责条款集合，保证每条款只有一个完整提取责任。冻结词表和共用对象保留完整快照，按下节固定入口分页读取，多标签副本只作上下文。
 6. 按完整条款主责派 extractor 并行提取，参见 `references/extraction.md`。extractor 先识别规定、主体及完整限制，再选单元/适用槽并组织 JSON；不得假定其他 extractor 会提取本条款的剩余规定。每个 extractor 保存一份完整 `extraction` JSON，并返回路径、负责条款、数量与问题摘要。
 7. 主会话读取摘要及提交文件的 `issues`，按下节处理明确问题，再每份文件调用一次 `write`。失败将具体 code/path 和必要版本交原 sub-agent 修正整份文件；成功保存回执。
 8. 运行 `reconcile`。按报告用既有 `write` 修正或撤销，再重新对账；报告有 errors 时如实交接未完成。
@@ -67,6 +67,12 @@ reading、synthesis、tagging、extraction 成功回执的 `result.tasks` 逐项
 reader 直接交 Markdown。程序分别从本 skill 的 `templates/summarizer.md`、`templates/summarizer-overview.md` 生成两个 summarizer 的派发正文；主会话无需寻找、传入或重新展开模板。后续 tagger/extractor 的共同背景直接取正式 overview.body，并标记 overview_id/文本版本，不重新摘要。共用身份保持完整记录和出处。固定绑定只交给实际构造程序，角色使用同版 complete_task.py，填写业务记录/概要正文、显式 issues；extractor 自行明确覆盖清单。find_quote 和 clause_revision 继续处理精确锚及固定修订字段。
 
 主会话统一调用正式 CLI；子任务不访问库、正式命令、其他并行任务或实现。角色名 reader、summarizer、tagger、extractor，同类加数字，署名由绑定明确指定。缺材料由主会话补交白名单，已授权原文可定向回读，纠错交原任务，不新增 fixer/reviewer 或全量互查。
+
+**会话边界：** 每个独立任务新建独立上下文，不继承主会话历史；两个不同批次的 extractor 也是不同任务。同一任务的补充、失败修正及依据核对回原会话。唯一跨角色复用例外是单段 reader 接续主体／事件 summarizer；概要 summarizer 另开。多段 reader 完成后不改派为 summarizer、tagger 或 extractor。并发满时排队，使用宿主已有能力结束已完成实例后再开新会话；不为省名额跨任务复用。宿主无法关闭继承、释放名额或提供独立上下文时，记录限制和实际做法，不能用“忽略历史”宣称隔离已通过。会话丢失后的恢复只交付该任务说明、有效产物及未完成部分。白名单限制读取，不清除旧上下文。
+
+**阅读交接：** reader 全读原文，笔记按六栏目保留各条款要点及充分连续原句，不默认追加整段全文。必要长定义、条件、表格可以完整摘录，不设字数上限。主会话接收实际范围和问题摘要、核验文件及版本；正常不把全部笔记打印到主会话。两个 summarizer 读同批完整笔记，依据不足定向回读。
+
+**共享资料：** 正式概要在第二部分原样交付一次；原文按主责全读，group/clauses 等机器快照不重复通读。主体／事件 summarizer 和 extractor 使用已预填路径、SHA-256 的 `read_context.py`：先读全部身份目录，再读候选完整记录及出处；共享身份以 shared-objects 为唯一正常来源，不另读重复 events。extractor 读全部单元完整定义、全部槽目录，再按选用、排除和缺口判断读取完整槽及 assignments。目录只用于定位，不能凭名称认定身份或不存在。命令及连续分页用法已在第三部分展开，细则见 [helper-tools.md](references/helper-tools.md#固定共享资料读取)。
 
 按阶段读取 preparation.md、tagging.md、handoff.md；构造参考 helper-tools.md 按角色交适用章节。初读概要任务不读完整 node/evidence/value 格式，reader 不读构造格式。单份成功回执不证明两任务准备完成，对账也不替代准备条件。
 
